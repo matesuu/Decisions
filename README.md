@@ -20,3 +20,13 @@ Click the pet or use **Feed / Check in** to reset the timer.
 > **`CHAOS_ARMED` defaults to off, and that's intentional.** Nothing real happens until you enable "Chaos Armed" in the menu bar.
 
 See `sidecar/README.md` and `DesktopApp/README.md` for setup.
+
+## Website
+
+A static project site (plain HTML/CSS/JS, no build step) lives in `docs/` and is published with GitHub Pages at <https://matesuu.github.io/Decisions/> (Settings > Pages > Deploy from a branch > `main` / `/docs`).
+
+Preview locally:
+
+```
+python3 -m http.server 8000 --directory docs   # then open http://localhost:8000
+```

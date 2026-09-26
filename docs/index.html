@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>bad decisions — chaos tamagotchi</title>
+    <meta name="description" content="A macOS desktop pet that makes increasingly worse decisions the longer you ignore it. A joke hackathon project that actually works." />
+    <meta property="og:title" content="bad decisions — chaos tamagotchi" />
+    <meta property="og:description" content="Ignore your desktop pet long enough and it emails, texts and files GitHub issues on your behalf. Dry-run by default." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://matesuu.github.io/Decisions/" />
+    <link rel="icon" href="assets/favicon.png" type="image/png" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <div class="app-shell">
+
+        <!-- HEADER -->
+        <header class="header">
+            <div class="shell header-inner">
+                <div class="header-brand">
+                    <img class="header-brand-pet" src="assets/pet.gif" width="40" height="40" alt="" />
+                    <a class="header-brand-name" href="#hero">bad decisions</a>
+                </div>
+                <nav class="header-nav" aria-label="Sections">
+                    <a href="https://github.com/matesuu/Decisions" target="_blank" rel="noopener noreferrer"><span class="bracket">[</span>source<span class="bracket">]</span></a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- MAIN -->
+        <main class="shell stack" id="hero">
+
+            <!-- HERO PANEL -->
+            <section class="panel stack-sm">
+                <div class="auth-hero stack-sm">
+                    <div class="hero-pet" id="hero-pet" role="button" tabindex="0" aria-label="Poke the pet">
+                        <div class="bubble" id="hero-bubble" role="status"></div>
+                        <img class="hero-pet-img" src="assets/pet.gif" width="160" height="160" alt="Mona, a pixel-art cat, hopping in place" />
+                        <div class="hero-pet-shadow" aria-hidden="true"></div>
+                    </div>
+                    <div class="stack-sm auth-copy">
+                        <div class="meta-label meta-label-lowercase hero-typing" aria-live="off">
+                            <span class="hero-typing-text" data-typing></span><span class="hero-typing-cursor" aria-hidden="true">|</span>
+                        </div>
+                        <div class="title title-lg">your desktop pet makes <span class="accent">bad decisions</span><br />the longer you ignore it.</div>
+                        <div class="muted">bad decisions (a.k.a. chaos tamagotchi) is a macOS desktop pet that escalates from cute to feral to committing crimes. it is a joke. it also really runs, and it ships in dry-run mode.</div>
+                        <div class="row gap-sm wrap" style="padding-top: 6px;">
+                            <a class="button button-primary" href="https://github.com/matesuu/Decisions" target="_blank" rel="noopener noreferrer">view source</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="footer">
+            <span>~*~ bad decisions · chaos tamagotchi ~*~</span>
+            <a href="https://github.com/matesuu/Decisions" target="_blank" rel="noopener noreferrer">a joke hackathon project</a>
+        </footer>
+
+    </div>
+</body>
+</html>
