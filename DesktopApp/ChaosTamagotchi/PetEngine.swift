@@ -18,15 +18,6 @@ let defaultDeadlineSeconds: TimeInterval = 1800
 enum Mood: String {
     case content, restless, anxious, feral, committingCrimes
 
-    var emoji: String {
-        switch self {
-        case .content: return "🐥"
-        case .restless: return "🐤"
-        case .anxious: return "🦆"
-        case .feral: return "👹"
-        case .committingCrimes: return "😈"
-        }
-    }
     var symbol: String {
         switch self {
         case .content: return "pawprint.fill"
@@ -36,17 +27,6 @@ enum Mood: String {
         case .committingCrimes: return "bolt.trianglebadge.exclamationmark.fill"
         }
     }
-    var bobSpeed: Double { self == .content ? 3 : 6 }
-    var bobAmount: Double { self == .content ? 3 : 2 }
-    var shakeAmount: Double {
-        switch self {
-        case .content, .restless: return 0
-        case .anxious: return 1.5
-        case .feral, .committingCrimes: return 3.5
-        }
-    }
-    var glitch: Bool { self == .feral || self == .committingCrimes }
-
     /// Seconds between mischief events; nil = none.
     var mischiefInterval: TimeInterval? {
         switch self {

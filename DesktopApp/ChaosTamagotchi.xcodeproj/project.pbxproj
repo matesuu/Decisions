@@ -12,6 +12,7 @@
 		A2BB2A2D35926F4E889FA298 /* PetWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F27B051A4B064B7D119726E /* PetWindow.swift */; };
 		DB4C9B061556072870DE5072 /* PetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65FBE3CA66C9538AA412770 /* PetView.swift */; };
 		E88FE27B09409A76E0236336 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A9F4841BA54D1E6C503869C /* AppDelegate.swift */; };
+		7C4E1A9B2D8F46E0A1B3C5D7 /* mona-loading-default.gif in Resources */ = {isa = PBXBuildFile; fileRef = 9F0E8D7C6B5A49382716F5E4 /* mona-loading-default.gif */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +23,7 @@
 		8224EFE3E3FBE64C7BBB5653 /* PetEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetEngine.swift; sourceTree = "<group>"; };
 		C65FBE3CA66C9538AA412770 /* PetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetView.swift; sourceTree = "<group>"; };
 		D7694F0E6E75C4DA601897DC /* ChaosTamagotchi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChaosTamagotchi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9F0E8D7C6B5A49382716F5E4 /* mona-loading-default.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-loading-default.gif"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -30,6 +32,7 @@
 			children = (
 				3A9F4841BA54D1E6C503869C /* AppDelegate.swift */,
 				73E53F0E665CE163D1EA684F /* Info.plist */,
+				9F0E8D7C6B5A49382716F5E4 /* mona-loading-default.gif */,
 				8224EFE3E3FBE64C7BBB5653 /* PetEngine.swift */,
 				C65FBE3CA66C9538AA412770 /* PetView.swift */,
 				6F27B051A4B064B7D119726E /* PetWindow.swift */,
@@ -62,6 +65,7 @@
 			buildConfigurationList = C25EA16641AA2044CC4FC756 /* Build configuration list for PBXNativeTarget "ChaosTamagotchi" */;
 			buildPhases = (
 				34E58B514CBE0F6E65BA8499 /* Sources */,
+				B6C5D4E3F20192837465A4B3 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -106,6 +110,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B6C5D4E3F20192837465A4B3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7C4E1A9B2D8F46E0A1B3C5D7 /* mona-loading-default.gif in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		34E58B514CBE0F6E65BA8499 /* Sources */ = {
