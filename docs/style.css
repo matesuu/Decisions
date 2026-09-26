@@ -404,3 +404,33 @@ img[src$=".gif"] { image-rendering: pixelated; }
     linear-gradient(160deg, #FFD08A 0%, #FF8A6B 40%, #B25BD6 70%, #3E6FF0 100%); }
 .mac-window { box-shadow: 0 30px 60px -18px rgba(40, 20, 80, .55); }
 .stage-pet { filter: drop-shadow(0 6px 8px rgba(30, 60, 120, .35)); }
+
+/* ─── Single sunset scheme: cream → peach → coral → rust → ember ─── */
+.hero { background:
+    radial-gradient(40% 32% at 72% 60%, rgba(255, 236, 205, .95), transparent 70%),
+    radial-gradient(70% 45% at 25% 0%, rgba(120, 36, 18, .35), transparent 70%),
+    linear-gradient(180deg, #6E2A18 0%, #A8442A 18%, #D86A40 36%, #F09A68 52%, #F8C49A 66%, #FCE3CC 80%, var(--bg) 94%); }
+.hero .h1 { text-shadow: 0 2px 28px rgba(90, 25, 10, .35); }
+.hero .swap { color: #FFE3C4; }
+.hero .lede { color: rgba(255, 246, 236, .92); text-shadow: 0 1px 12px rgba(90, 25, 10, .3); }
+.nav:not(.scrolled) .nav-links a:hover { color: #FFE3C4; }
+.sun { background: radial-gradient(circle, #FFFBF3 0 11%, #FFEBD0 17%, rgba(255, 220, 180, .6) 27%, rgba(255, 200, 150, .2) 45%, rgba(255, 200, 150, 0) 66%); }
+.ridge-back { fill: #F2B48E; opacity: .9; }
+.ridge-mid { fill: #E08A64; opacity: .85; }
+.ridge-front { fill: #FCE6D6; opacity: .95; }
+.demo { background: rgba(255, 245, 236, .45); border-color: rgba(255, 255, 255, .6); box-shadow: 0 50px 110px -30px rgba(110, 40, 18, .5), 0 0 0 1px rgba(255, 255, 255, .45) inset; }
+.mac-wallpaper { background:
+    radial-gradient(70% 90% at 0% 100%, #8E3320 0%, transparent 60%),
+    radial-gradient(60% 70% at 32% 72%, #C9512E 0%, transparent 60%),
+    radial-gradient(70% 80% at 76% 55%, #F07A4E 0%, transparent 60%),
+    radial-gradient(80% 70% at 100% 8%, #FFC98A 0%, transparent 65%),
+    linear-gradient(160deg, #FFE0B5 0%, #F7A171 40%, #D4603A 72%, #7E2C1B 100%); }
+.mac-window { box-shadow: 0 30px 60px -18px rgba(90, 30, 12, .55); }
+.stage-pet { filter: drop-shadow(0 6px 8px rgba(110, 40, 18, .35)); }
+.mac-sad { background: linear-gradient(180deg, #3A1A12, #6E2A18); }
+.art-wall .w2 { background: linear-gradient(180deg, #3A1A12, #6E2A18); }
+.art-wall .w2 img, .mac-sad img { filter: saturate(.4) sepia(.4) brightness(.95); }
+.art-imsg div, .imsg-bubble { background: linear-gradient(180deg, #D86A40, #AE5630); }
+.eq i { background: var(--rust-2); }
+.hero .hero-copy .btn-rust, .nav:not(.scrolled) .btn-rust { color: #8E3A1E; background: linear-gradient(180deg, #FFFBF6, #FDE7D4); box-shadow: 0 1px 0 #fff inset, 0 -2px 0 rgba(174, 86, 48, .15) inset, 0 14px 30px -10px rgba(90, 25, 10, .55); }
+.hero .hero-copy .btn-rust:hover, .nav:not(.scrolled) .btn-rust:hover { filter: none; box-shadow: 0 1px 0 #fff inset, 0 -2px 0 rgba(174, 86, 48, .15) inset, 0 18px 36px -10px rgba(90, 25, 10, .65); }
