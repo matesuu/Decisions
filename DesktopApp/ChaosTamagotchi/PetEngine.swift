@@ -87,7 +87,6 @@ final class PetEngine: ObservableObject {
     @Published var position: CGPoint = .zero
     @Published private(set) var speechText: String?
     @Published private(set) var face: PetFace?
-    @Published private(set) var history: [ChaosLogEntry] = []
     @Published private(set) var facingRight = false
 
     /// Debug-only override: set CHAOS_DEBUG_DEADLINE_SECONDS (e.g. 30) in the Xcode scheme
@@ -386,15 +385,10 @@ final class PetEngine: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { MainActor.assumeIsolated { block() } }
     }
 
-    /// Records an activity in the Rap Sheet and pops the app window open so you can watch.
+    /// Logs what the pet did (Console.app, filter "ChaosTamagotchi").
     func record(_ label: String, _ outcome: String, show: Bool = true) {
-        history.insert(ChaosLogEntry(date: Date(), label: label, outcome: outcome), at: 0)
-        if history.count > 100 { history.removeLast(history.count - 100) }
-        if show { showActivity?() }
+        NSLog("ChaosTamagotchi %@: %@", label, outcome)
     }
-
-    /// Set by the status bar controller: brings the Rap Sheet window forward.
-    var showActivity: (() -> Void)?
 
     // MARK: Cursor hijack: grabs the pointer and yanks it around for ~3s (no keystrokes, no clicks)
 

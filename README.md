@@ -54,7 +54,7 @@ macOS asks the first time each feature runs. You can also grant them ahead of ti
 | Automation → Contacts, Messages | looking up your friend's number and sending the text |
 | Automation → Spotify | Spotify revenge |
 
-If a feature fails, the reason is shown in the **Rap Sheet** window. Ad-hoc signed builds lose these grants every time you rebuild. To keep them, create `DesktopApp/Local.xcconfig` (it's gitignored) containing your signing identity:
+If a feature fails, the reason is logged to Console.app (filter for `ChaosTamagotchi`). Ad-hoc signed builds lose these grants every time you rebuild. To keep them, create `DesktopApp/Local.xcconfig` (it's gitignored) containing your signing identity:
 
 ```
 CODE_SIGN_IDENTITY = <SHA-1 from `security find-identity -v -p codesigning`>

@@ -9,7 +9,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private let infoItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let armedItem = NSMenuItem(title: "Chaos Armed", action: nil, keyEquivalent: "")
     private let mischiefMenu = NSMenu()
-    private var rapSheetWindow: NSWindow?
     private var cancellables = Set<AnyCancellable>()
 
     init(engine: PetEngine) {
@@ -25,9 +24,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         let feed = NSMenuItem(title: "Feed / Check in", action: #selector(feed), keyEquivalent: "f")
         feed.target = self
         menu.addItem(feed)
-        let sheet = NSMenuItem(title: "Rap Sheet", action: #selector(showRapSheetMenu), keyEquivalent: "r")
-        sheet.target = self
-        menu.addItem(sheet)
         armedItem.action = #selector(toggleArmed)
         armedItem.target = self
         menu.addItem(armedItem)
@@ -42,7 +38,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             ("Sticky Note Roast", #selector(stickyNote)),
             ("Spotify Revenge", #selector(spotify)),
             ("Wallpaper Takeover", #selector(wallpaper)),
-            ("Fakeout Ultimatum", #selector(fakeout)),
         ] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
@@ -66,8 +61,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         quit.target = self
         menu.addItem(quit)
         statusItem.menu = menu
-
-        engine.showActivity = { [weak self] in self?.showRapSheet(activate: false) }
 
         engine.$mood
             .receive(on: DispatchQueue.main)
@@ -125,46 +118,6 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     @objc private func restoreWallpaper() { engine.mischiefKit.restoreWallpaper() }
     @objc private func restoreIcons() { engine.restoreDesktopIcons() }
     @objc private func crimeNow() { engine.commitCrime() }
-    @objc private func fakeout() { engine.fakeoutUltimatum() }
 
     @objc private func quit() { NSApp.terminate(nil) }
-
-    @objc private func showRapSheetMenu() { showRapSheet(activate: true) }
-
-    private func showRapSheet(activate: Bool) {
-        if rapSheetWindow == nil {
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 380),
-                             styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
-            w.title = "Rap Sheet"
-            w.isReleasedWhenClosed = false
-            w.contentView = NSHostingView(rootView: RapSheetView(engine: engine))
-            w.center()
-            rapSheetWindow = w
-        }
-        // Pop the log window up (without stealing focus) so you can watch what the pet is doing.
-        if activate { NSApp.activate(ignoringOtherApps: true) }
-        rapSheetWindow?.orderFrontRegardless()
-    }
-}
-
-struct RapSheetView: View {
-    @ObservedObject var engine: PetEngine
-
-    var body: some View {
-        if engine.history.isEmpty {
-            Text("No crimes yet. Keep ignoring the pet.")
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            List(engine.history) { entry in
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(entry.label).font(.headline)
-                    Text(entry.outcome).font(.callout).textSelection(.enabled)
-                    Text(entry.date.formatted(date: .abbreviated, time: .standard))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 3)
-            }
-        }
-    }
 }
