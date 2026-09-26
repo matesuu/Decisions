@@ -1,5 +1,5 @@
 /* Pickle site: vanilla JS, no dependencies.
-   Scroll reveals, the scripted desktop demo, scenery parallax, agent flow, control tabs,
+   Scroll reveals, the pet window, the scripted desktop demo, agent flow, control tabs,
    terminal typing, and an idle-page poop easter egg. */
 (function () {
     'use strict';
@@ -23,16 +23,12 @@
     }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
     $$('.reveal').forEach(function (el) { revealObs.observe(el); });
 
-    /* ── Nav, edge CTA, scenery parallax ──────────────────── */
-    var nav = $('.nav'), edge = $('#edge-cta'), ridges = $$('.ridge'), sun = $('.sun');
+    /* ── Nav, edge CTA ─────────────────────────────────────── */
+    var nav = $('.nav'), edge = $('#edge-cta');
     var onScrollTop = function () {
         var y = window.scrollY;
         nav.classList.toggle('scrolled', y > 8);
         if (edge) edge.classList.toggle('show', y > window.innerHeight * 0.9);
-        if (!reduceMotion && y < 900) {
-            ridges.forEach(function (r, i) { r.style.transform = 'translateY(' + (y * (0.08 + i * 0.07)) + 'px)'; });
-            if (sun) sun.style.translate = '0 ' + (y * 0.25) + 'px';
-        }
     };
     window.addEventListener('scroll', onScrollTop, { passive: true });
     onScrollTop();
@@ -65,6 +61,38 @@
                 swapEl.classList.remove('in');
             }, 450);
         }, 3000);
+    }
+
+    /* ── Pet window: cycles through every Mona clip ───────── */
+    var petwin = $('#petwin');
+    if (petwin) {
+        var CLIPS = [
+            ['content', 'content', 100], ['talk', 'chatting', 92], ['restless', 'restless', 70],
+            ['anxious', 'anxious', 46], ['feral', 'feral', 20], ['crimes', 'committing crimes', 0],
+            ['sad', 'sad', 0], ['happy', 'fed ✓', 100]
+        ];
+        var pwImg = $('#petwin-img'), pwMood = $('#petwin-mood'), pwHealth = $('#petwin-health'), pwDots = $('#petwin-dots');
+        var clipIdx = 0, clipTimer = 0;
+        var showClip = function (k) {
+            clipIdx = k;
+            var c = CLIPS[k];
+            pwImg.src = 'assets/mona-' + c[0] + '.gif';
+            pwMood.textContent = c[1];
+            pwHealth.textContent = '♥ ' + c[2] + '%';
+            petwin.setAttribute('data-mood', c[0]);
+            $$('button', pwDots).forEach(function (d, i) { d.classList.toggle('on', i === k); });
+            clearTimeout(clipTimer);
+            if (!reduceMotion) clipTimer = setTimeout(function () { showClip((clipIdx + 1) % CLIPS.length); }, 2600);
+        };
+        CLIPS.forEach(function (c, k) {
+            new Image().src = 'assets/mona-' + c[0] + '.gif';  // preload so swaps don't flash
+            var d = document.createElement('button');
+            d.type = 'button';
+            d.setAttribute('aria-label', 'Show ' + c[1]);
+            d.addEventListener('click', function () { showClip(k); });
+            pwDots.appendChild(d);
+        });
+        showClip(0);
     }
 
     /* ── Hero demo: a scripted escalation, every crime announced first ── */
