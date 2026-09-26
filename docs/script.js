@@ -54,12 +54,50 @@
         }
     }
 
-    /* ── Hero pet: poke it ─────────────────────────────────── */
+    /* ── Hero pet: cycle moods, poke to talk ──────────────── */
     var heroPet = document.getElementById('hero-pet');
     var heroBubble = document.getElementById('hero-bubble');
-    if (heroPet && heroBubble) {
+    var heroImg = document.getElementById('hero-pet-img');
+    var heroMood = document.getElementById('hero-mood');
+    var MOODS = [
+        { src: 'assets/mona-content.gif', name: 'content' },
+        { src: 'assets/mona-restless.gif', name: 'restless' },
+        { src: 'assets/mona-anxious.gif', name: 'anxious' },
+        { src: 'assets/mona-feral.gif', name: 'feral' },
+        { src: 'assets/mona-crimes.gif', name: 'committing crimes' },
+        { src: 'assets/mona-sad.gif', name: 'sad' },
+        { src: 'assets/mona-happy.gif', name: 'happy' }
+    ];
+    var moodIdx = 0;
+    var talking = false;
+    var pokeGen = 0;
+    function showMood(entry) {
+        if (!heroImg) return;
+        heroImg.src = entry.src;
+        heroImg.alt = 'Mona, a pixel-art cat, ' + entry.name;
+        if (heroMood) heroMood.textContent = entry.name;
+    }
+    if (heroPet && heroBubble && heroImg) {
         var heroSay = makeSpeaker(heroBubble);
-        var poke = function () { heroSay(pick(LINES), 4); };
+        if (!reduceMotion) {
+            setInterval(function () {
+                if (talking) return;
+                moodIdx = (moodIdx + 1) % MOODS.length;
+                showMood(MOODS[moodIdx]);
+            }, 3800);
+        }
+        var poke = function () {
+            heroSay(pick(LINES), 4);
+            talking = true;
+            pokeGen += 1;
+            var gen = pokeGen;
+            showMood({ src: 'assets/mona-talk.gif', name: 'talking' });
+            setTimeout(function () {
+                if (gen !== pokeGen) return;
+                talking = false;
+                showMood(MOODS[moodIdx]);
+            }, 4000);
+        };
         heroPet.addEventListener('click', poke);
         heroPet.addEventListener('keydown', function (e) {
             if (e.key !== 'Enter' && e.key !== ' ') return;

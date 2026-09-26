@@ -298,6 +298,13 @@ code, pre { font-family: inherit; }
 @keyframes pet-shadow {
     50% { transform: scaleX(.86); opacity: .07; }
 }
+.hero-pet-mood {
+    margin: 8px 0 0;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: lowercase;
+    color: var(--color-fg4);
+}
 
 /* Speech bubble (mirrors the app's white rounded bubble) */
 .bubble {

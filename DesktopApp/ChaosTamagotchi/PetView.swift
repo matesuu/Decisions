@@ -9,7 +9,7 @@ struct PetView: View {
         VStack(spacing: 2) {
             SpeechBubble(text: engine.speechText)
                 .frame(height: 64, alignment: .bottom)
-            Sprite(mood: engine.mood, facingRight: engine.facingRight)
+            Sprite(mood: engine.mood, facingRight: engine.facingRight, face: engine.face, speaking: engine.speechText != nil)
         }
         .padding(.bottom, 18)
         .frame(width: PetWindow.size.width, height: PetWindow.size.height, alignment: .bottom)
@@ -56,9 +56,9 @@ private extension Mood {
         switch self {
         case .content: 0.55
         case .restless: 1
-        case .anxious: 1.8
-        case .feral: 2.8
-        case .committingCrimes: 4
+        case .anxious: 1.35
+        case .feral: 1.7
+        case .committingCrimes: 2.2
         }
     }
 
@@ -113,9 +113,43 @@ private extension Mood {
     }
 }
 
-/// Decoded Mona frames. GIF already has a transparent background and a 7-frame hop.
-private enum MonaSprite {
-    static func index(at time: TimeInterval, rate: Double) -> Int {
+/// Which Mona GIF is on screen. Built from the hop in `mona-loading-default.gif`.
+private enum MonaClip: String, CaseIterable {
+    case content = "mona-content"
+    case restless = "mona-restless"
+    case anxious = "mona-anxious"
+    case feral = "mona-feral"
+    case crimes = "mona-crimes"
+    case happy = "mona-happy"
+    case talk = "mona-talk"
+    case sad = "mona-sad"
+
+    static func select(mood: Mood, face: PetFace?, speaking: Bool) -> MonaClip {
+        if face == .happy { return .happy }
+        if speaking, mood == .content || mood == .restless { return .talk }
+        switch mood {
+        case .content: return .content
+        case .restless: return .restless
+        case .anxious: return .anxious
+        case .feral: return .feral
+        case .committingCrimes: return .crimes
+        }
+    }
+
+    func rate(for mood: Mood) -> Double {
+        switch self {
+        case .talk: 1.7
+        case .happy: 1.1
+        default: mood.playbackRate
+        }
+    }
+}
+
+private struct SpriteSheet {
+    let frames: [NSImage]
+    let delays: [TimeInterval]
+
+    func index(at time: TimeInterval, rate: Double) -> Int {
         guard !frames.isEmpty else { return 0 }
         let duration = delays.reduce(0, +)
         guard duration > 0 else { return 0 }
@@ -129,20 +163,12 @@ private enum MonaSprite {
         return frames.count - 1
     }
 
-    private static func delay(source: CGImageSource, index: Int) -> TimeInterval {
-        let props = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
-        let gif = props?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
-        let raw = (gif?[kCGImagePropertyGIFUnclampedDelayTime] as? Double)
-            ?? (gif?[kCGImagePropertyGIFDelayTime] as? Double)
-            ?? 0.16
-        return raw < 0.02 ? 0.1 : raw
-    }
-
-    private static func load() -> (frames: [NSImage], delays: [TimeInterval]) {
-        guard let url = Bundle.main.url(forResource: "mona-loading-default", withExtension: "gif"),
-              let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-            NSLog("ChaosTamagotchi missing mona-loading-default.gif")
-            return ([], [])
+    static func load(named name: String) -> SpriteSheet {
+        let url = Bundle.main.url(forResource: name, withExtension: "gif")
+            ?? Bundle.main.url(forResource: "mona-loading-default", withExtension: "gif")
+        guard let url, let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            NSLog("ChaosTamagotchi missing %@.gif", name)
+            return SpriteSheet(frames: [], delays: [])
         }
         var images: [NSImage] = []
         var times: [TimeInterval] = []
@@ -152,24 +178,39 @@ private enum MonaSprite {
             images.append(NSImage(cgImage: cg, size: size))
             times.append(delay(source: source, index: i))
         }
-        return (images, times)
+        return SpriteSheet(frames: images, delays: times)
     }
 
-    private static let loaded = load()
-    static let frames = loaded.0
-    static let delays = loaded.1
+    private static func delay(source: CGImageSource, index: Int) -> TimeInterval {
+        let props = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
+        let gif = props?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+        let raw = (gif?[kCGImagePropertyGIFUnclampedDelayTime] as? Double)
+            ?? (gif?[kCGImagePropertyGIFDelayTime] as? Double)
+            ?? 0.16
+        return raw < 0.02 ? 0.1 : raw
+    }
+}
+
+private enum MonaLibrary {
+    static let sheets: [MonaClip: SpriteSheet] = Dictionary(
+        uniqueKeysWithValues: MonaClip.allCases.map { ($0, SpriteSheet.load(named: $0.rawValue)) }
+    )
 }
 
 private struct Sprite: View {
     let mood: Mood
     let facingRight: Bool
+    let face: PetFace?
+    let speaking: Bool
 
     var body: some View {
+        let clip = MonaClip.select(mood: mood, face: face, speaking: speaking)
+        let sheet = MonaLibrary.sheets[clip] ?? SpriteSheet(frames: [], delays: [])
         TimelineView(.animation) { ctx in
             let t = ctx.date.timeIntervalSinceReferenceDate
             let pose = mood.pose(at: t)
-            let idx = MonaSprite.index(at: t, rate: mood.playbackRate)
-            let image = MonaSprite.frames.indices.contains(idx) ? MonaSprite.frames[idx] : NSImage()
+            let idx = sheet.index(at: t, rate: clip.rate(for: mood))
+            let image = sheet.frames.indices.contains(idx) ? sheet.frames[idx] : NSImage()
 
             Image(nsImage: image)
                 .resizable()

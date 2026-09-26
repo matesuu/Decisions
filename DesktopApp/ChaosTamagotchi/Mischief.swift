@@ -252,7 +252,8 @@ final class MischiefKit {
         img.lockFocus()
         NSGradient(starting: NSColor(calibratedRed: 0.05, green: 0.07, blue: 0.16, alpha: 1),
                    ending: NSColor(calibratedRed: 0.16, green: 0.2, blue: 0.35, alpha: 1))?.draw(in: NSRect(origin: .zero, size: size), angle: 90)
-        if let url = Bundle.main.url(forResource: "mona-loading-default", withExtension: "gif"),
+        if let url = Bundle.main.url(forResource: "mona-sad", withExtension: "gif")
+            ?? Bundle.main.url(forResource: "mona-loading-default", withExtension: "gif"),
            let pet = NSImage(contentsOf: url) {
             let side: CGFloat = 520
             pet.draw(in: NSRect(x: (size.width - side) / 2, y: 520, width: side, height: side),

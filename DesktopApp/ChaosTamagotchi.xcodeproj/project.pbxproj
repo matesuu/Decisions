@@ -12,6 +12,14 @@
 		118B7DAF40897E6DBF86ED28 /* PetEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8224EFE3E3FBE64C7BBB5653 /* PetEngine.swift */; };
 		A2BB2A2D35926F4E889FA298 /* PetWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F27B051A4B064B7D119726E /* PetWindow.swift */; };
 		C95692EBD0705A936D331B81 /* mona-loading-default.gif in Resources */ = {isa = PBXBuildFile; fileRef = 8C7D55F1BB174A72778FA219 /* mona-loading-default.gif */; };
+		C0C0A1100000000000000001 /* mona-content.gif in Resources */ = {isa = PBXBuildFile; fileRef = C0C0A1200000000000000001 /* mona-content.gif */; };
+		C0C0A1100000000000000002 /* mona-restless.gif in Resources */ = {isa = PBXBuildFile; fileRef = C0C0A1200000000000000002 /* mona-restless.gif */; };
+		C0C0A1100000000000000003 /* mona-anxious.gif in Resources */ = {isa = PBXBuildFile; fileRef = C0C0A1200000000000000003 /* mona-anxious.gif */; };
+		C0C0A1100000000000000004 /* mona-feral.gif in Resources */ = {isa = PBXBuildFile; fileRef = C0C0A1200000000000000004 /* mona-feral.gif */; };
+		C0C0A1100000000000000005 /* mona-crimes.gif in Resources */ = {isa = PBXBuildFile; fileRef = C0C0A1200000000000000005 /* mona-crimes.gif */; };
+		C0C0A1100000000000000006 /* mona-happy.gif in Resources */ = {isa = PBXBuildFile; fileRef = C0C0A1200000000000000006 /* mona-happy.gif */; };
+		C0C0A1100000000000000007 /* mona-talk.gif in Resources */ = {isa = PBXBuildFile; fileRef = C0C0A1200000000000000007 /* mona-talk.gif */; };
+		C0C0A1100000000000000008 /* mona-sad.gif in Resources */ = {isa = PBXBuildFile; fileRef = C0C0A1200000000000000008 /* mona-sad.gif */; };
 		DB4C9B061556072870DE5072 /* PetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C65FBE3CA66C9538AA412770 /* PetView.swift */; };
 		E88FE27B09409A76E0236336 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A9F4841BA54D1E6C503869C /* AppDelegate.swift */; };
 		F83C39EC03F4B495A4C228A3 /* chaos_action.py in Resources */ = {isa = PBXBuildFile; fileRef = 05F0A20433531A6BE127C8DD /* chaos_action.py */; };
@@ -25,6 +33,14 @@
 		73E53F0E665CE163D1EA684F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8224EFE3E3FBE64C7BBB5653 /* PetEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetEngine.swift; sourceTree = "<group>"; };
 		8C7D55F1BB174A72778FA219 /* mona-loading-default.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-loading-default.gif"; sourceTree = "<group>"; };
+		C0C0A1200000000000000001 /* mona-content.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-content.gif"; sourceTree = "<group>"; };
+		C0C0A1200000000000000002 /* mona-restless.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-restless.gif"; sourceTree = "<group>"; };
+		C0C0A1200000000000000003 /* mona-anxious.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-anxious.gif"; sourceTree = "<group>"; };
+		C0C0A1200000000000000004 /* mona-feral.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-feral.gif"; sourceTree = "<group>"; };
+		C0C0A1200000000000000005 /* mona-crimes.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-crimes.gif"; sourceTree = "<group>"; };
+		C0C0A1200000000000000006 /* mona-happy.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-happy.gif"; sourceTree = "<group>"; };
+		C0C0A1200000000000000007 /* mona-talk.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-talk.gif"; sourceTree = "<group>"; };
+		C0C0A1200000000000000008 /* mona-sad.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = "mona-sad.gif"; sourceTree = "<group>"; };
 		9512EA88B2B1608EB2DD35D8 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		C65FBE3CA66C9538AA412770 /* PetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetView.swift; sourceTree = "<group>"; };
 		D7694F0E6E75C4DA601897DC /* ChaosTamagotchi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChaosTamagotchi.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -39,6 +55,14 @@
 				73E53F0E665CE163D1EA684F /* Info.plist */,
 				F820E817E118618F2F3E6142 /* Mischief.swift */,
 				8C7D55F1BB174A72778FA219 /* mona-loading-default.gif */,
+				C0C0A1200000000000000001 /* mona-content.gif */,
+				C0C0A1200000000000000002 /* mona-restless.gif */,
+				C0C0A1200000000000000003 /* mona-anxious.gif */,
+				C0C0A1200000000000000004 /* mona-feral.gif */,
+				C0C0A1200000000000000005 /* mona-crimes.gif */,
+				C0C0A1200000000000000006 /* mona-happy.gif */,
+				C0C0A1200000000000000007 /* mona-talk.gif */,
+				C0C0A1200000000000000008 /* mona-sad.gif */,
 				8224EFE3E3FBE64C7BBB5653 /* PetEngine.swift */,
 				C65FBE3CA66C9538AA412770 /* PetView.swift */,
 				6F27B051A4B064B7D119726E /* PetWindow.swift */,
@@ -144,6 +168,14 @@
 			files = (
 				F83C39EC03F4B495A4C228A3 /* chaos_action.py in Resources */,
 				C95692EBD0705A936D331B81 /* mona-loading-default.gif in Resources */,
+				C0C0A1100000000000000001 /* mona-content.gif in Resources */,
+				C0C0A1100000000000000002 /* mona-restless.gif in Resources */,
+				C0C0A1100000000000000003 /* mona-anxious.gif in Resources */,
+				C0C0A1100000000000000004 /* mona-feral.gif in Resources */,
+				C0C0A1100000000000000005 /* mona-crimes.gif in Resources */,
+				C0C0A1100000000000000006 /* mona-happy.gif in Resources */,
+				C0C0A1100000000000000007 /* mona-talk.gif in Resources */,
+				C0C0A1100000000000000008 /* mona-sad.gif in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -66,6 +66,11 @@ enum Mood: String {
     }
 }
 
+/// Short clip that overrides the mood sprite. Feeding plays happy.
+enum PetFace: String {
+    case happy
+}
+
 struct ChaosLogEntry: Identifiable {
     let id = UUID()
     let date: Date
@@ -81,6 +86,7 @@ final class PetEngine: ObservableObject {
     @Published private(set) var secondsLeft: TimeInterval
     @Published var position: CGPoint = .zero
     @Published private(set) var speechText: String?
+    @Published private(set) var face: PetFace?
     @Published private(set) var history: [ChaosLogEntry] = []
     @Published private(set) var facingRight = false
 
@@ -93,6 +99,7 @@ final class PetEngine: ObservableObject {
     private var direction: CGFloat = -1
     private var directionTimeLeft: TimeInterval = 5
     private var speechTask: Task<Void, Never>?
+    private var faceTask: Task<Void, Never>?
     private var tickTimer: Timer?
     private var walkTimer: Timer?
     private weak var window: PetWindow?
@@ -148,6 +155,7 @@ final class PetEngine: ObservableObject {
         didSpotifyThisCycle = false
         didWallpaperThisCycle = false
         mischiefKit.restoreWallpaper(announce: false)  // feeding earns your wallpaper back; poop stays
+        showFace(.happy, seconds: 4.5)
         say("Nom. Fine. You're forgiven. For now.")
     }
 
@@ -166,7 +174,13 @@ final class PetEngine: ObservableObject {
         elapsed += 1
         secondsLeft = max(0, deadlineSeconds - elapsed)
         let newMood = Mood.from(fraction: elapsed / deadlineSeconds)
-        if newMood != mood { mood = newMood }
+        if newMood != mood {
+            mood = newMood
+            if newMood != .content {
+                faceTask?.cancel()
+                face = nil
+            }
+        }
 
         // Scale mischief cadence down when the deadline is shortened for debugging.
         let scale = min(1, deadlineSeconds / 1800)
@@ -479,6 +493,15 @@ final class PetEngine: ObservableObject {
     }
 
     // MARK: Speech
+
+    func showFace(_ face: PetFace, seconds: TimeInterval) {
+        faceTask?.cancel()
+        self.face = face
+        faceTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            if !Task.isCancelled { self?.face = nil }
+        }
+    }
 
     func say(_ text: String, seconds: TimeInterval = 7) {
         speechTask?.cancel()
