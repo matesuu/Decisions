@@ -18,17 +18,19 @@ final class MischiefKit {
 
     var poopCount: Int { poops.count }
 
-    func dropPoop(count: Int) {
+    /// `scale` enlarges each poop (the fakeout-ultimatum payoff uses a big one).
+    func dropPoop(count: Int, scale: CGFloat = 1) {
         let room = Self.maxPoops - poops.count
         guard room > 0 else { return }
         let petCenter = CGPoint(x: engine.position.x + PetWindow.size.width / 2, y: engine.position.y + 18)
+        let side = 46 * scale
         for _ in 0..<min(count, room) {
-            let origin = CGPoint(x: petCenter.x + .random(in: -70...70), y: petCenter.y + .random(in: -10...40))
-            let panel = ClickAwayPanel(size: CGSize(width: 46, height: 46), origin: origin)
+            let origin = CGPoint(x: petCenter.x - (side - 46) / 2 + .random(in: -70...70), y: petCenter.y + .random(in: -10...40))
+            let panel = ClickAwayPanel(size: CGSize(width: side, height: side), origin: origin)
             let label = NSTextField(labelWithString: "💩")
-            label.font = .systemFont(ofSize: 34)
+            label.font = .systemFont(ofSize: 34 * scale)
             label.alignment = .center
-            label.frame = NSRect(x: 0, y: 4, width: 46, height: 40)
+            label.frame = NSRect(x: 0, y: 4 * scale, width: side, height: 40 * scale)
             panel.contentView?.addSubview(label)
             panel.onClick = { [weak self, weak panel] in
                 guard let self, let panel else { return }
@@ -146,7 +148,6 @@ final class MischiefKit {
         let delta = CGPoint(x: cos(angle) * distance, y: sin(angle) * distance)
         let steps = 60
         var i = 0
-        engine.say("This window was in my spot.", seconds: 4)
         nudgeTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] t in
             MainActor.assumeIsolated {
                 i += 1
@@ -174,7 +175,6 @@ final class MischiefKit {
             engine.record("Spotify revenge skipped", "Spotify isn't installed.", show: false)
             return
         }
-        engine.say("Let me pick the music. 🎶", seconds: 5)
         Task.detached { [weak self] in
             // Remember what was playing so we can put it back.
             let wasRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty
@@ -228,7 +228,7 @@ final class MischiefKit {
         for screen in NSScreen.screens {
             try? ws.setDesktopImageURL(portrait, for: screen, options: [.imageScaling: NSImageScaling.scaleProportionallyUpOrDown.rawValue])
         }
-        engine.say("I redecorated. Do you like it? It's me. Sad.", seconds: 6)
+        engine.say("do you like it? it's me. sad.", seconds: 4)
         engine.record("Wallpaper takeover", "Your wallpaper is now a sad pet portrait. Feed the pet (or Restore Wallpaper) to get it back.")
     }
 

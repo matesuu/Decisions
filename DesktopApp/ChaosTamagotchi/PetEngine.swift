@@ -47,9 +47,9 @@ enum Mood: String {
     /// Seconds between mischief events; nil = none.
     var mischiefInterval: TimeInterval? {
         switch self {
-        case .content: return 45
-        case .restless: return 90
-        case .anxious: return 60
+        case .content: return 25
+        case .restless: return 60
+        case .anxious: return 45
         case .feral: return 30
         case .committingCrimes: return 20
         }
@@ -156,7 +156,7 @@ final class PetEngine: ObservableObject {
         didWallpaperThisCycle = false
         mischiefKit.restoreWallpaper(announce: false)  // feeding earns your wallpaper back; poop stays
         showFace(.happy, seconds: 4.5)
-        say("Nom. Fine. You're forgiven. For now.")
+        say("nom. fine. forgiven. for now.", seconds: 3)
     }
 
     // MARK: Tick (1 Hz)
@@ -185,11 +185,13 @@ final class PetEngine: ObservableObject {
         // Scale mischief cadence down when the deadline is shortened for debugging.
         let scale = min(1, deadlineSeconds / 1800)
         sinceMischief += 1
-        let due = mood == .content ? 45 : max(3, (mood.mischiefInterval ?? 0) * scale)  // baseline 45s is never scaled
+        let due = mood == .content ? 25 : max(3, (mood.mischiefInterval ?? 0) * scale)  // baseline 25s is never scaled
         if mood.mischiefInterval != nil, sinceMischief >= due {
             sinceMischief = 0
             mischief()
         }
+
+        chatter()
 
         if mood == .committingCrimes && !triggeredThisCycle {
             triggeredThisCycle = true
@@ -244,31 +246,140 @@ final class PetEngine: ObservableObject {
     private var didWallpaperThisCycle = false
     private(set) lazy var mischiefKit = MischiefKit(engine: self)
 
+    /// One stunt the pet can pull. It announces itself in the speech bubble, then does it.
+    private struct Crime {
+        let name: String
+        let weight: Int
+        var severe = false  // only severe crimes get a real ultimatum
+        let lines: [String]
+        let run: @MainActor () -> Void
+    }
+
     private func mischief() {
         let kit = mischiefKit
-        switch mood {
-        case .content:
-            if Int.random(in: 0..<3) == 0 { kit.dropPoop(count: 1) }
-            if Int.random(in: 0..<4) == 0 { after(4) { self.hijackCursor() } }
-        case .restless:
-            nudgeCursor()
-            kit.dropPoop(count: 1)
-            if Bool.random() { kit.stickyNoteRoast() }
-        case .anxious:
-            nudgeCursor()
-            kit.dropPoop(count: 2)
-            if Bool.random() { kit.nudgeFrontWindow() } else { kit.stickyNoteRoast() }
-        case .feral, .committingCrimes:
-            nudgeCursor()
-            kit.dropPoop(count: 3)
-            var stunts: [() -> Void] = [
-                { self.grabDesktopFolder() }, { self.hijackCursor() },
-                { kit.nudgeFrontWindow() }, { kit.stickyNoteRoast() },
-            ]
-            if !didSpotifyThisCycle { stunts.append { self.didSpotifyThisCycle = true; kit.spotifyRevenge() } }
-            if !didWallpaperThisCycle { stunts.append { self.didWallpaperThisCycle = true; kit.wallpaperTakeover() } }
-            stunts.randomElement()!()
+        // Poop only half the time, and fewer at once.
+        if Bool.random() {
+            kit.dropPoop(count: mood == .feral || mood == .committingCrimes ? 2 : 1)
         }
+        // Mild crimes are the bread and butter; the big ones only show up once she's feral.
+        var pool: [Crime] = [
+            Crime(name: "boop your cursor", weight: 4, lines: ["boop.", "your cursor looks lonely.", "don't mind me…"], run: { self.nudgeCursor() }),
+            Crime(name: "leave a sticky note", weight: 3, lines: ["writing you a note.", "I have FEEDBACK.", "one sec, leaving a review."], run: { kit.stickyNoteRoast() }),
+        ]
+        if mood != .content {
+            pool.append(Crime(name: "shove your window", weight: 3, lines: ["this window's in my spot.", "scoot.", "rearranging. hold still."], run: { kit.nudgeFrontWindow() }))
+            pool.append(Crime(name: "hijack your mouse", weight: 2, severe: true, lines: ["gimme the mouse.", "my turn to drive.", "MINE."], run: { self.hijackCursor() }))
+        }
+        if mood == .anxious || mood == .feral || mood == .committingCrimes {
+            pool.append(Crime(name: "steal a folder", weight: 2, severe: true, lines: ["ooh, a folder.", "that folder? mine now.", "redecorating your desktop."], run: { self.grabDesktopFolder() }))
+        }
+        if mood == .feral || mood == .committingCrimes {
+            if !didSpotifyThisCycle {
+                pool.append(Crime(name: "pick the music", weight: 1, severe: true, lines: ["let me pick the music. 🎶", "DJ time."], run: { self.didSpotifyThisCycle = true; kit.spotifyRevenge() }))
+            }
+            if !didWallpaperThisCycle {
+                pool.append(Crime(name: "redo your wallpaper", weight: 1, severe: true, lines: ["your wallpaper is boring.", "I'm redecorating."], run: { self.didWallpaperThisCycle = true; kit.wallpaperTakeover() }))
+            }
+        }
+        let draw = { () -> Crime in
+            var roll = Int.random(in: 0..<pool.reduce(0) { $0 + $1.weight })
+            return pool.first { roll -= $0.weight; return roll < 0 } ?? pool[0]
+        }
+        let crime = draw()
+        // Severe crimes sometimes come as an ultimatum: pick one or she does both.
+        if mood != .content, !ultimatumOpen, crime.severe, Bool.random(),
+           let other = pool.filter({ $0.severe && $0.name != crime.name }).randomElement() {
+            ultimatumOpen = true
+            say("ultimatum. pick one.", seconds: 3)
+            UltimatumPanel.show(near: position, a: crime.name, b: other.name, seconds: 8) { [weak self] choice in
+                guard let self else { return }
+                self.ultimatumOpen = false
+                switch choice {
+                case 0: self.announce("fine. \(crime.name).", then: crime.run)
+                case 1: self.announce("fine. \(other.name).", then: other.run)
+                default:
+                    self.record("Ignored an ultimatum", "Didn't pick between \(crime.name) and \(other.name). Got both.", show: false)
+                    self.announce("you didn't pick. both.", then: { crime.run(); self.after(2.5, other.run) })
+                }
+            }
+            return
+        }
+        // Otherwise, now and then, a fake ultimatum with outrageous threats that ends in one big poop.
+        if mood != .content, !ultimatumOpen, Int.random(in: 0..<8) == 0 {
+            fakeoutUltimatum()
+            return
+        }
+        announce(crime.lines.randomElement()!, then: crime.run)
+    }
+
+    private var ultimatumOpen = false
+
+    /// Fake threats for the fakeout ultimatum when the LLM is unavailable.
+    nonisolated private static let cannedFakeThreats = [
+        "send your nudes to your mom", "push your API keys to GitHub", "text your ex \"u up?\"",
+        "reply-all \"I quit\"", "post your search history", "email your boss your diary",
+        "tweet your passwords", "venmo your ex $1 with a ❤️", "rename every file to \"final_final\"",
+        "set your ringtone to your voice memos",
+    ]
+
+    /// Presents two AI-written outrageous threats as an ultimatum, then reveals it was a joke and drops a big poop.
+    func fakeoutUltimatum() {
+        guard !ultimatumOpen else { return }
+        ultimatumOpen = true
+        say("hmm. I have an idea.", seconds: 3)
+        Task { [weak self] in
+            let (a, b) = await Self.fakeThreats()
+            guard let self else { return }
+            self.say("ultimatum. pick one.", seconds: 3)
+            UltimatumPanel.show(near: self.position, a: a, b: b, seconds: 8) { [weak self] choice in
+                guard let self else { return }
+                self.ultimatumOpen = false
+                self.say(choice == nil ? "no answer? …jk. have this instead." : "lol jk. have this instead.", seconds: 4)
+                self.after(1.2) { self.mischiefKit.dropPoop(count: 1, scale: 2) }
+                self.record("Fakeout ultimatum", "Threatened to \(a) or \(b). Just pooped instead.", show: false)
+            }
+        }
+    }
+
+    nonisolated private static func fakeThreats() async -> (String, String) {
+        let text = await requestLine(
+            system: "You are a chaotic desktop pet bluffing your owner with an ultimatum. Invent TWO different outrageous, "
+                + "embarrassing things you threaten to do on their computer (e.g. \"send your nudes to your mom\", "
+                + "\"push your API keys to GitHub\"). Each is a lowercase verb phrase under 7 words, addressed to \"you/your\". "
+                + "Output exactly two lines, nothing else.",
+            user: "Give me two new ones.", maxTokens: 50) ?? ""
+        let lines = text.split(whereSeparator: \.isNewline)
+            .map { $0.replacingOccurrences(of: #"^\s*(?:[-*•]|\d+[.)]|[AB][.):])\s*"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespaces.union(.init(charactersIn: "\"."))) }
+            .filter { !$0.isEmpty && $0.count <= 48 }
+        if lines.count >= 2, lines[0] != lines[1] { return (lines[0], lines[1]) }
+        let canned = cannedFakeThreats.shuffled()
+        return (canned[0], canned[1])
+    }
+
+    /// Says what she's about to do, waits a beat so you can read it, then does it.
+    private func announce(_ line: String, then action: @escaping @MainActor () -> Void) {
+        say(line, seconds: 3)
+        after(1.6, action)
+    }
+
+    // MARK: Idle chatter: tiny bubbles so it feels like a pet
+
+    private var sinceChatter: TimeInterval = 0
+    private var nextChatter: TimeInterval = .random(in: 12...25)
+
+    private func chatter() {
+        sinceChatter += 1
+        guard speechText == nil, sinceChatter >= nextChatter else { return }
+        sinceChatter = 0
+        nextChatter = .random(in: 14...30)
+        let lines: [String] = switch mood {
+        case .content: ["hi :3", "*yawn*", "…", "👀", "nice screen.", "pet me?", "prrr"]
+        case .restless: ["bored.", "hellooo?", "feed me?", "*taps foot*", "I'm right here."]
+        case .anxious: ["you forgot me.", "hungry.", "HELLO??", "*stares*", "this is fine."]
+        case .feral, .committingCrimes: ["hehehe", "no rules.", "chaos o'clock.", "you did this.", "*gremlin noises*"]
+        }
+        say(lines.randomElement()!, seconds: 2.5)
     }
 
     private func after(_ seconds: TimeInterval, _ block: @escaping @MainActor () -> Void) {
@@ -541,14 +652,14 @@ final class PetEngine: ObservableObject {
         let minutes = Int((deadlineSeconds / 60).rounded())
         let poop = mischiefKit.poopCount
         let situation = "The user ignored their desktop pet for the full \(minutes) minutes. The pet has already pooped on their screen \(poop) times, left sticky notes, shoved their windows around and hijacked their cursor. Now it texts their friend to complain about them."
-        say("That's it. I'm doing something about this...", seconds: 5)
+        say("that's it. I'm texting your friend.", seconds: 4)
         let armed = Self.isArmed
         Task { [weak self] in
             let entry = await Self.runSidecar(situation: situation, armed: armed)
             guard let self else { return }
             NSLog("ChaosTamagotchi sidecar result: %@ | %@", entry.label, entry.outcome)
             self.record(entry.label, entry.outcome)
-            self.say("\(entry.label): \(entry.outcome)", seconds: 12)
+            self.say(entry.outcome.hasPrefix("[FAILED]") ? "ugh. it didn't send." : entry.outcome.hasPrefix("[DRY RUN]") ? "(pretend I just texted them.)" : "done. they know now. 😈", seconds: 5)
         }
     }
 

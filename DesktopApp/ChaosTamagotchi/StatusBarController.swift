@@ -42,6 +42,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             ("Sticky Note Roast", #selector(stickyNote)),
             ("Spotify Revenge", #selector(spotify)),
             ("Wallpaper Takeover", #selector(wallpaper)),
+            ("Fakeout Ultimatum", #selector(fakeout)),
         ] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
@@ -124,6 +125,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     @objc private func restoreWallpaper() { engine.mischiefKit.restoreWallpaper() }
     @objc private func restoreIcons() { engine.restoreDesktopIcons() }
     @objc private func crimeNow() { engine.commitCrime() }
+    @objc private func fakeout() { engine.fakeoutUltimatum() }
 
     @objc private func quit() { NSApp.terminate(nil) }
 
