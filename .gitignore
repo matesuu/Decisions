@@ -2,3 +2,4 @@ DesktopApp/build/
 xcuserdata/
 .DS_Store
 __pycache__/
+DesktopApp/Local.xcconfig

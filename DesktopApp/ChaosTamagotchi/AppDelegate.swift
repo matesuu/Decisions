@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 
 @main
 @MainActor
@@ -24,5 +25,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         engine.attach(window: petWindow)
         petWindow.orderFrontRegardless()
         engine.start()
+        // The Notion note types via System Events, which needs Accessibility. Ask once up front
+        // (macOS shows its own prompt) instead of failing silently at crime time.
+        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        if !AXIsProcessTrustedWithOptions(opts) {
+            NSLog("ChaosTamagotchi: Accessibility not granted; Notion notes will fail until it is.")
+        }
     }
 }

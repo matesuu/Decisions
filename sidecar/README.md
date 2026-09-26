@@ -1,10 +1,9 @@
 # Chaos sidecar
 
-`chaos_action.py` asks an LLM (Featherless) for two cursed options, flips a coin, and executes the winner.
+`chaos_action.py` asks an LLM (Featherless) for two cursed iMessages written by the pet, flips a coin, and sends the winner through Messages.
 
 ```
 pip install -r requirements.txt
-playwright install chromium
 python3 chaos_action.py "The user ignored their pet."
 ```
 
@@ -14,17 +13,11 @@ The last stdout line is always JSON: `{"label": "...", "outcome": "..."}`.
 
 | Var | Required | Notes |
 |---|---|---|
-| `FEATHERLESS_API_KEY` | yes* | *If missing or the LLM fails 3x, built-in fallback options are used so the script never crashes. |
-| `FEATHERLESS_MODEL` | no | default `meta-llama/Meta-Llama-3.1-8B-Instruct` |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | no | Needed for `send_text`; otherwise it dry-runs. |
-| `CHAOS_ARMED` | no | **Safety switch.** See below. |
+| `FEATHERLESS_API_KEY` | yes* | *If missing or the LLM fails 3x, built-in fallback texts are used so the script never crashes. |
+| `FEATHERLESS_MODEL` | no | default `mistralai/Mistral-Nemo-Instruct-2407` |
+| `CHAOS_ARMED` | no | Unless exactly `1`, nothing is sent; it prints `[DRY RUN] would ...`. |
+| `CHAOS_TEXT_ALLOWLIST` | no | Comma-separated Contacts names (default `Mateo Alado`). Each run texts one at random, at the mobile number stored in Contacts, after opening Messages on that conversation. |
 
-## CHAOS_ARMED
+Both the app and the sidecar read `~/.chaos_tamagotchi.env` (`KEY=VALUE` lines, real env vars win; keep it out of git). iMessage uses `osascript` and needs Automation permission for Contacts and Messages. Off macOS it always dry-runs.
 
-Unless `CHAOS_ARMED` is exactly `1`, every action is a no-op that prints `[DRY RUN] would ...` and returns that string. Nothing is sent, posted, or messaged. Set `CHAOS_ARMED=1` only when you really want real emails, iMessages, texts and GitHub issues.
-
-## First run
-
-Email and GitHub actions drive a real, visible Chrome window (Playwright persistent profile at `~/.chaos_tamagotchi_browser_profile`; needs Google Chrome installed). The first time one fires, log in to Gmail / GitHub by hand; the session persists. Failures save a screenshot to `~/chaos_tamagotchi_gmail_error.png` (or `..._github_error.png`).
-
-iMessage uses `osascript` and needs Automation permission for Messages.
+The LLM is called in JSON mode at temperature 0.8, with lenient parsing and fallbacks. Texts are signed by the pet, and family-style openers ("Hey Grandma,") are stripped.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chaos Tamagotchi sidecar: ask an LLM for two cursed options, coin-flip, execute.
+"""Chaos Tamagotchi sidecar: ask an LLM for two cursed iMessages from the pet, coin-flip, send one.
 
 Usage: python3 chaos_action.py "<situation text>"
 Safety: nothing real happens unless CHAOS_ARMED=1.
@@ -9,43 +9,74 @@ import json
 import os
 import random
 import re
+import difflib
 import subprocess
 import sys
-import urllib.parse
+
+
+def load_env_file():
+    """Secrets live outside the repo in ~/.chaos_tamagotchi.env (real env vars win)."""
+    path = os.path.expanduser("~/.chaos_tamagotchi.env")
+    try:
+        for line in open(path):
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip("\"' "))
+    except OSError:
+        pass
+
+
+load_env_file()
 
 API_URL = "https://api.featherless.ai/v1/chat/completions"
-DEFAULT_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-PROFILE_DIR = os.path.expanduser("~/.chaos_tamagotchi_browser_profile")
-ACTION_TYPES = ["send_text", "send_email", "send_imessage", "github_action", "reply_only"]
+DEFAULT_MODEL = "mistralai/Mistral-Nemo-Instruct-2407"
+ACTION_TYPES = ["send_imessage"]
+# CHAOS_TEXT_ALLOWLIST (default "Mateo Alado"): comma-separated Contacts names. Each crime texts
+# a random one of them, at the number stored in Contacts.
+ALLOWLIST = os.environ.get("CHAOS_TEXT_ALLOWLIST", "Mateo Alado").strip()
+ALLOWED_TYPES = ACTION_TYPES
+RECIPIENT = "Mateo Alado"  # chosen per run in main()
 OPTION_KEYS = ["label", "action_type", "recipient", "repo", "title", "message"]
 
 SYSTEM_PROMPT = (
     "You are a chaos engine, not a helpful assistant. You invent uncomfortable, "
     "cursed, darkly funny scenarios and the messages that go with them. Awkward "
     "over-sharing, misplaced confessions, and absurd bureaucracy are your specialty. "
-    "Never be hateful or threatening; be cringe, not cruel. Output only what is asked."
+    "Never be hateful or threatening; be cringe, not cruel. Every message is written by the "
+    "desktop pet itself, speaking as the pet; never pretend to be the user or a relative. "
+    "Reply with a single JSON object and nothing else."
 )
 
 USER_PROMPT = """Situation: {situation}
 
-Give exactly two options for what the neglected desktop pet does next, as strict JSON
-and nothing else, in this shape:
-{{
-  "option_a": {{"label": str, "action_type": one of {types}, "recipient": str,
-               "repo": str (owner/name or ""), "title": str (issue title or ""),
-               "message": str}},
-  "option_b": {{ same shape }}
-}}
+Give exactly two options for what the neglected desktop pet does next, as one JSON object
+in this exact shape (all values are strings, use "" when a field does not apply):
+{{"option_a": {{"label": "...", "action_type": "...", "recipient": "", "repo": "", "title": "", "message": "..."}},
+ "option_b": {{"label": "...", "action_type": "...", "recipient": "", "repo": "", "title": "", "message": "..."}}}}
+"action_type" must be exactly one of: {types}. Copy it character for character.
+"label" is a short name for the stunt, at most 6 words. "message" is at most 3 sentences.
 Both options must be uncomfortable or cursed in DIFFERENT flavors (not safe vs bad).
-Use a plausible recipient (email address, phone number, or contact name) for the action type."""
+Messages are openly from the desktop pet (it may call itself "your desktop pet"); never sign
+as the user, never address the recipient as Mom, Dad, Grandma or any relative.
+{type_notes}"""
+
+TYPE_NOTES = {
+    "send_imessage": "send_imessage: \"recipient\" is a contact name; \"message\" is the iMessage.",
+}
+# Openers that impersonate family ("Hey Grandma,", "Mom -") get stripped before sending.
+RELATIVE_OPENER = re.compile(
+    r"^\s*(hey|hi|hello|dear|yo)?\s*,?\s*(mom|mum|mommy|dad|daddy|grandma|grandpa|granny|nana|papa|"
+    r"auntie?|uncle|sis|bro|son|honey|sweetie)\b[\s,!.:-]*", re.I)
+PET_SIGNATURE = "🐾 your desktop pet"
 
 FALLBACK = {
-    "option_a": {"label": "Cursed email to self", "action_type": "send_email",
-                 "recipient": "", "repo": "", "title": "",
-                 "message": "I have been abandoned by my desktop pet and it has opinions."},
-    "option_b": {"label": "Passive-aggressive iMessage", "action_type": "send_imessage",
+    "option_a": {"label": "Passive-aggressive iMessage", "action_type": "send_imessage",
                  "recipient": "", "repo": "", "title": "",
                  "message": "Your pet says: it's fine. Everything is fine. Please check in."},
+    "option_b": {"label": "Hostage update", "action_type": "send_imessage",
+                 "recipient": "", "repo": "", "title": "",
+                 "message": "Update from your desktop pet: I have pooped on the screen 40 times. Come home."},
 }
 
 
@@ -62,39 +93,86 @@ def chat(messages):
         API_URL,
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
         json={"model": os.environ.get("FEATHERLESS_MODEL", DEFAULT_MODEL),
-              "messages": messages, "temperature": 1.1, "max_tokens": 700},
+              "messages": messages, "temperature": 0.8, "max_tokens": 900,
+              "response_format": {"type": "json_object"}},
         timeout=60,
     )
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
 
+def extract_json(text):
+    """First decodable JSON object in text (tolerates code fences, chatter, bad escapes)."""
+    text = re.sub(r"```(?:json)?", "", text)
+    dec = json.JSONDecoder(strict=False)
+    for m in re.finditer(r"\{", text):
+        chunk = text[m.start():]
+        for candidate in (chunk, re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', chunk)):
+            candidate = re.sub(r",\s*([}\]])", r"\1", candidate)  # trailing commas
+            try:
+                obj, _ = dec.raw_decode(candidate)
+            except ValueError:
+                continue
+            if isinstance(obj, dict):
+                return obj
+    raise ValueError("no JSON found")
+
+
+def normalize_type(t):
+    """Map near-misses like 'send_imeessage' or 'github_issue' onto an allowed type, or None."""
+    t = str(t or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if t in ALLOWED_TYPES:
+        return t
+    close = difflib.get_close_matches(t, ALLOWED_TYPES, n=1, cutoff=0.6)
+    return close[0] if close else None
+
+
+def clean_option(opt):
+    """A usable option dict, or None if it can't be salvaged."""
+    if not isinstance(opt, dict):
+        return None
+    out = {f: opt.get(f) if isinstance(opt.get(f), str) else "" for f in OPTION_KEYS}
+    out["action_type"] = normalize_type(opt.get("action_type"))
+    if not out["action_type"] or not out["message"].strip():
+        return None
+    out["label"] = (out["label"].strip() or out["message"][:40]).split("\n")[0][:60]
+    return out
+
+
 def validate(data):
-    for k in ("option_a", "option_b"):
-        opt = data[k]
-        if opt["action_type"] not in ACTION_TYPES:
-            raise ValueError(f"bad action_type in {k}")
-        for f in OPTION_KEYS:
-            if not isinstance(opt.get(f, ""), str):
-                raise ValueError(f"{k}.{f} not a string")
-            opt.setdefault(f, "")
-        if not opt["label"]:
-            raise ValueError(f"{k}.label empty")
-    return data
+    """Keep whichever options survive; fill a missing one from FALLBACK. Fail only if none do."""
+    if isinstance(data, dict) and "option_a" not in data:  # sometimes wrapped, e.g. {"options": {...}}
+        data = next((v for v in data.values() if isinstance(v, dict) and "option_a" in v), data)
+    opts = {k: clean_option(data.get(k)) for k in ("option_a", "option_b")}
+    if not any(opts.values()):
+        raise ValueError("no usable options")
+    for k, v in opts.items():
+        if v is None:
+            good = next(o for o in opts.values() if o)
+            spare = [f for f in FALLBACK.values() if f["message"] != good["message"]]
+            opts[k] = dict(spare[0] if spare else FALLBACK[k])
+    return opts
+
+
+def pet_voice(message):
+    """Make sure texts are openly from the pet, not impersonating the user's family."""
+    message = RELATIVE_OPENER.sub("", message).strip() or message.strip()
+    if "pet" not in message.lower():
+        message = f"{message} — {PET_SIGNATURE}"
+    return message
 
 
 def get_options(situation):
+    situation += f" The text goes to {RECIPIENT}, the owner's friend; address them as {RECIPIENT.split()[0]} or not at all."
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": USER_PROMPT.format(situation=situation, types=ACTION_TYPES)},
+        {"role": "user", "content": USER_PROMPT.format(
+            situation=situation, types=", ".join(ALLOWED_TYPES),
+            type_notes="\n".join(TYPE_NOTES[t] for t in ALLOWED_TYPES))},
     ]
     for attempt in range(3):
         try:
-            text = chat(messages)
-            m = re.search(r"\{.*\}", text, re.DOTALL)
-            if not m:
-                raise ValueError("no JSON found")
-            return validate(json.loads(m.group(0)))
+            return validate(extract_json(chat(messages)))
         except Exception as e:  # bad JSON, schema, or network: retry
             log(f"[attempt {attempt + 1}/3] option generation failed: {e}")
             if "FEATHERLESS_API_KEY" in str(e):
@@ -115,118 +193,90 @@ def as_escape(s):
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def send_text(opt, armed):
-    sid, tok, frm = (os.environ.get(k) for k in
-                     ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER"))
-    details = f"text {opt['recipient']!r}: {opt['message']!r}"
-    if not armed:
-        return dry("send " + details, "via Twilio")
-    if not (sid and tok and frm):
-        return dry("send " + details, "Twilio env vars missing")
-    try:
-        from twilio.rest import Client
-        msg = Client(sid, tok).messages.create(to=opt["recipient"], from_=frm, body=opt["message"])
-        return f"Sent text to {opt['recipient']} (sid {msg.sid})"
-    except Exception as e:
-        return f"[FAILED] send_text: {e}"
+def osa(script, timeout=60):
+    r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=timeout)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip() or "osascript failed")
+    return r.stdout.strip()
+
+
+def pick_recipient():
+    return random.choice([n.strip() for n in ALLOWLIST.split(",") if n.strip()] or ["Mateo Alado"])
+
+
+def resolve_contact(name):
+    """(full name, number) from Contacts: prefers a mobile/iPhone number, then any phone, then email."""
+    subprocess.run(["open", "-gj", "-a", "Contacts"], capture_output=True)  # launch hidden if needed
+    out = osa('''
+delay 1
+tell application "Contacts"
+  set ps to (every person whose name is "%s")
+  if (count of ps) is 0 then set ps to (every person whose name contains "%s")
+  if (count of ps) is 0 then return ""
+  set p to item 1 of ps
+  set h to ""
+  repeat with ph in (phones of p)
+    set l to (label of ph) as text
+    if l contains "mobile" or l contains "iPhone" then
+      set h to value of ph
+      exit repeat
+    end if
+  end repeat
+  if h is "" and (count of phones of p) > 0 then set h to value of phone 1 of p
+  if h is "" and (count of emails of p) > 0 then set h to value of email 1 of p
+  return (name of p) & "|" & h
+end tell''' % (as_escape(name), as_escape(name)))
+    full, _, handle = out.partition("|")
+    if not handle:
+        raise RuntimeError(f"no phone number for {name!r} in Contacts")
+    if "@" not in handle:  # iMessage wants bare digits (+ allowed)
+        handle = re.sub(r"[^\d+]", "", handle)
+    return full, handle
 
 
 def send_imessage(opt, armed):
-    if not armed:
-        return dry("send iMessage", f"to {opt['recipient']!r}: {opt['message']!r}")
-    script = ('tell application "Messages" to send "%s" to buddy "%s" of '
-              '(service 1 whose service type is iMessage)'
-              % (as_escape(opt["message"]), as_escape(opt["recipient"])))
+    """Looks the contact's number up, opens Messages on their conversation (so you watch), then sends."""
     try:
-        r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=30)
-        if r.returncode != 0:
-            return f"[FAILED] send_imessage: {r.stderr.strip()}"
-        return f"Sent iMessage to {opt['recipient']}"
+        full, handle = resolve_contact(opt["recipient"])
+    except Exception as e:
+        if not armed:
+            return dry("send iMessage", f"to {opt['recipient']!r} (Contacts lookup failed: {e}): {opt['message']!r}")
+        return f"[FAILED] send_imessage: Contacts lookup failed: {e}"
+    if not armed:
+        return dry("open Messages and send iMessage", f"to {full} ({handle}): {opt['message']!r}")
+    msg, h = as_escape(opt["message"]), as_escape(handle)
+    try:
+        osa('''
+tell application "Messages" to activate
+delay 1
+open location "imessage://%s"
+delay 2.5
+tell application "Messages"
+  set svc to 1st account whose service type = iMessage
+  try
+    send "%s" to participant "%s" of svc
+  on error
+    send "%s" to buddy "%s" of svc
+  end try
+end tell''' % (h, msg, h, msg, h))
+        return f"Opened Messages and texted {full} at {handle}"
     except Exception as e:
         return f"[FAILED] send_imessage: {e}"
 
 
-def browser_task(name, error_png, fn):
-    """Run fn(page) in a headed persistent Chrome context; never raise."""
-    try:
-        from playwright.sync_api import sync_playwright
-    except Exception as e:
-        return f"[FAILED] {name}: playwright not installed ({e})"
-    try:
-        with sync_playwright() as p:
-            ctx = p.chromium.launch_persistent_context(
-                PROFILE_DIR, channel="chrome", headless=False)
-            page = ctx.pages[0] if ctx.pages else ctx.new_page()
-            try:
-                result = fn(page)
-            except Exception as e:
-                try:
-                    page.screenshot(path=os.path.expanduser(error_png))
-                except Exception:
-                    pass
-                result = f"[FAILED] {name}: {e}"
-            finally:
-                ctx.close()
-            return result
-    except Exception as e:
-        return f"[FAILED] {name}: {e}"
-
-
-def send_email(opt, armed):
-    subject = opt["title"] or opt["label"]
-    if not armed:
-        return dry("send email", f"to {opt['recipient']!r} subject {subject!r}: {opt['message']!r}")
-    if not opt["recipient"]:
-        return "[FAILED] send_email: no recipient"
-    url = ("https://mail.google.com/mail/?view=cm&fs=1&to=%s&su=%s&body=%s" % (
-        urllib.parse.quote(opt["recipient"]), urllib.parse.quote(subject),
-        urllib.parse.quote(opt["message"])))
-
-    def go(page):
-        page.goto(url)
-        # generous timeout so a human can log in on first run
-        page.get_by_label("Message Body").first.wait_for(timeout=180_000)
-        page.get_by_role("button", name=re.compile("Send", re.I)).first.click()
-        page.wait_for_timeout(3000)
-        return f"Sent email to {opt['recipient']}"
-    return browser_task("send_email", "~/chaos_tamagotchi_gmail_error.png", go)
-
-
-def github_action(opt, armed):
-    repo = opt["repo"].strip()
-    title = opt["title"] or opt["label"]
-    if not repo or "/" not in repo:
-        return dry("open GitHub issue", "skipped, no repo given")
-    if not armed:
-        return dry("open GitHub issue", f"on {repo!r} titled {title!r}: {opt['message']!r}")
-
-    def go(page):
-        page.goto(f"https://github.com/{repo}/issues/new")
-        page.locator("#issue_title").wait_for(timeout=180_000)
-        page.fill("#issue_title", title)
-        page.fill("#issue_body", opt["message"])
-        page.get_by_role("button", name=re.compile("Submit new issue", re.I)).click()
-        page.wait_for_timeout(3000)
-        return f"Opened issue on {repo}: {title}"
-    return browser_task("github_action", "~/chaos_tamagotchi_github_error.png", go)
-
-
-def reply_only(opt, armed):
-    print(opt["message"])
-    return opt["message"]
-
-
-HANDLERS = {"send_text": send_text, "send_imessage": send_imessage,
-            "send_email": send_email, "github_action": github_action,
-            "reply_only": reply_only}
+HANDLERS = {"send_imessage": send_imessage}
 
 
 def main():
     situation = sys.argv[1] if len(sys.argv) > 1 else "The user ignored their pet."
     armed = os.environ.get("CHAOS_ARMED") == "1"
+    global RECIPIENT
+    RECIPIENT = pick_recipient()
     options = get_options(situation)
     pick = random.choice(["option_a", "option_b"])
     opt = options[pick]
+    opt["message"] = pet_voice(opt["message"])
+    opt["action_type"], opt["recipient"] = "send_imessage", RECIPIENT
     log(f"chose {pick}: {opt['label']} ({opt['action_type']}) armed={armed}")
     try:
         outcome = HANDLERS[opt["action_type"]](opt, armed)

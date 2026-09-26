@@ -1,0 +1,7 @@
+// Ad-hoc signing by default. Ad-hoc builds get a new identity on every rebuild, so macOS
+// forgets the Accessibility/Automation grants. To keep them, create DesktopApp/Local.xcconfig
+// (gitignored) with your own identity, e.g.:
+//   CODE_SIGN_IDENTITY = <SHA-1 from `security find-identity -v -p codesigning`>
+CODE_SIGN_IDENTITY = -
+CODE_SIGN_STYLE = Manual
+#include? "Local.xcconfig"

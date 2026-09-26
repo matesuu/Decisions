@@ -2,18 +2,22 @@ name: ChaosTamagotchi
 options:
   deploymentTarget:
     macOS: "14.0"
+configFiles:
+  Debug: Signing.xcconfig
+  Release: Signing.xcconfig
 settings:
   base:
     SWIFT_VERSION: "5.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
-    CODE_SIGN_IDENTITY: "-"
-    CODE_SIGN_STYLE: Manual
     ENABLE_HARDENED_RUNTIME: NO
 targets:
   ChaosTamagotchi:
     type: application
     platform: macOS
-    sources: [ChaosTamagotchi]
+    sources:
+      - ChaosTamagotchi
+      - path: ../sidecar/chaos_action.py
+        buildPhase: resources
     info:
       path: ChaosTamagotchi/Info.plist
       properties:
