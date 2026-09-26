@@ -2,7 +2,8 @@ FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    CHAOS_ARMED=0
+    CHAOS_ARMED=0 \
+    PORT=8000
 
 WORKDIR /app
 
@@ -22,8 +23,12 @@ COPY sidecar/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY sidecar/chaos_action.py .
+COPY docs/ ./docs/
 
 USER chaos
 
-ENTRYPOINT ["xvfb-run", "-a", "--", "python", "chaos_action.py"]
+EXPOSE 8000
+
+# "serve" hosts the project site (docs/). Any other args go to the sidecar.
+ENTRYPOINT ["sh", "-c", "if [ \"$1\" = serve ]; then exec python -m http.server \"${PORT:-8000}\" --bind 0.0.0.0 --directory /app/docs; fi; exec xvfb-run -a -- python /app/chaos_action.py \"$@\"", "--"]
 CMD ["The user ignored their pet."]
