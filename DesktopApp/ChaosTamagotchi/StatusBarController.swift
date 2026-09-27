@@ -8,6 +8,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let infoItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let armedItem = NSMenuItem(title: "Chaos Armed", action: nil, keyEquivalent: "")
+    private let safeItem = NSMenuItem(title: "Safe Mode (just cute)", action: nil, keyEquivalent: "")
     private let mischiefMenu = NSMenu()
     private var cancellables = Set<AnyCancellable>()
 
@@ -21,12 +22,15 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.addItem(infoItem)
         menu.addItem(.separator())
 
-        let feed = NSMenuItem(title: "Feed / Check in", action: #selector(feed), keyEquivalent: "f")
+        let feed = NSMenuItem(title: "Feed (+50%)", action: #selector(feed), keyEquivalent: "f")
         feed.target = self
         menu.addItem(feed)
         armedItem.action = #selector(toggleArmed)
         armedItem.target = self
         menu.addItem(armedItem)
+        safeItem.action = #selector(toggleSafe)
+        safeItem.target = self
+        menu.addItem(safeItem)
         menu.addItem(.separator())
         for (title, action) in [
             ("Text Mateo Now (commit crime)", #selector(crimeNow)),
@@ -37,7 +41,8 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             ("Nudge Front Window", #selector(nudgeWindow)),
             ("Sticky Note Roast", #selector(stickyNote)),
             ("Spotify Revenge", #selector(spotify)),
-            ("Wallpaper Takeover", #selector(wallpaper)),
+            ("Play Mommy ASMR", #selector(asmr)),
+            ("Random Google Images", #selector(images)),
         ] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
             item.target = self
@@ -47,15 +52,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         mischiefItem.submenu = mischiefMenu
         menu.addItem(mischiefItem)
         menu.addItem(.separator())
-        for (title, action) in [
-            ("Clean Up All Poop", #selector(cleanPoop)),
-            ("Restore Wallpaper", #selector(restoreWallpaper)),
-            ("Restore Desktop Icons", #selector(restoreIcons)),
-        ] {
-            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
-            item.target = self
-            menu.addItem(item)
-        }
+        let restore = NSMenuItem(title: "Restore Everything", action: #selector(restoreAll), keyEquivalent: "r")
+        restore.target = self
+        menu.addItem(restore)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
@@ -94,6 +93,12 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         let poop = engine.mischiefKit.poopCount
         infoItem.title = "Mood: \(engine.mood.rawValue) — \(mins) min left" + (poop > 0 ? " — 💩×\(poop)" : "")
         armedItem.state = PetEngine.isArmed ? .on : .off
+        safeItem.state = PetEngine.isSafeMode ? .on : .off
+    }
+
+    @objc private func toggleSafe() {
+        engine.setSafeMode(!PetEngine.isSafeMode)
+        safeItem.state = PetEngine.isSafeMode ? .on : .off
     }
 
     @objc private func feed() { engine.checkIn() }
@@ -113,10 +118,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     }
     @objc private func stickyNote() { engine.mischiefKit.stickyNoteRoast() }
     @objc private func spotify() { engine.mischiefKit.spotifyRevenge() }
-    @objc private func wallpaper() { engine.mischiefKit.wallpaperTakeover() }
-    @objc private func cleanPoop() { engine.mischiefKit.cleanAllPoop() }
-    @objc private func restoreWallpaper() { engine.mischiefKit.restoreWallpaper() }
-    @objc private func restoreIcons() { engine.restoreDesktopIcons() }
+    @objc private func asmr() { engine.mischiefKit.openMommyASMR() }
+    @objc private func images() { engine.mischiefKit.openRandomImages() }
+    @objc private func restoreAll() { engine.restoreEverything() }
     @objc private func crimeNow() { engine.commitCrime() }
 
     @objc private func quit() { NSApp.terminate(nil) }

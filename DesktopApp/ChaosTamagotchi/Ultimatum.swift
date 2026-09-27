@@ -6,6 +6,10 @@ import SwiftUI
 @MainActor
 enum UltimatumPanel {
     private static var current: NSPanel?
+    private static var cancelCurrent: (() -> Void)?
+
+    /// Closes the open ultimatum without running either crime.
+    static func dismiss() { cancelCurrent?() }
 
     static func show(near petOrigin: CGPoint, a: String, b: String, seconds: Double, completion: @escaping (Int?) -> Void) {
         current?.close()
@@ -35,6 +39,11 @@ enum UltimatumPanel {
         }
         panel.contentView = NSHostingView(rootView: UltimatumView(a: a, b: b, seconds: seconds, pick: finish))
         current = panel
+        cancelCurrent = {
+            finished = true
+            panel.close()
+            if current === panel { current = nil }
+        }
         panel.orderFrontRegardless()
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { MainActor.assumeIsolated { finish(nil) } }
     }

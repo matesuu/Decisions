@@ -40,11 +40,14 @@ RECIPIENT = "Mateo Alado"  # chosen per run in main()
 OPTION_KEYS = ["label", "action_type", "recipient", "repo", "title", "message"]
 
 SYSTEM_PROMPT = (
-    "You are a chaos engine, not a helpful assistant. You invent uncomfortable, "
-    "cursed, darkly funny scenarios and the messages that go with them. Awkward "
-    "over-sharing, misplaced confessions, and absurd bureaucracy are your specialty. "
+    "You are a chaos engine, not a helpful assistant. You write text messages that are "
+    "complete random nonsense: surreal non-sequiturs, fake news about vegetables, "
+    "confessions about things that never happened, announcements nobody asked for. "
     "Never be hateful or threatening; be cringe, not cruel. Every message is written by the "
     "desktop pet itself, speaking as the pet; never pretend to be the user or a relative. "
+    "Voice: satirical and gloriously dumb. Deliver it with total deadpan confidence and "
+    "completely broken logic, like a very stupid pet who is sure it's a genius. Witty, but "
+    "idiotic: absurd non-sequiturs, wrong conclusions, fake facts stated proudly. "
     "Reply with a single JSON object and nothing else."
 )
 
@@ -55,11 +58,24 @@ in this exact shape (all values are strings, use "" when a field does not apply)
 {{"option_a": {{"label": "...", "action_type": "...", "recipient": "", "repo": "", "title": "", "message": "..."}},
  "option_b": {{"label": "...", "action_type": "...", "recipient": "", "repo": "", "title": "", "message": "..."}}}}
 "action_type" must be exactly one of: {types}. Copy it character for character.
-"label" is a short name for the stunt, at most 6 words. "message" is at most 3 sentences.
-Both options must be uncomfortable or cursed in DIFFERENT flavors (not safe vs bad).
+"label" is a short name for the stunt, at most 6 words. "message" is exactly ONE sentence: a
+frantic, conspiratorial run-on that jumps between unrelated ideas mid-thought, connects things that
+have no connection, and is completely certain about all of it. No greeting, don't use their name,
+start mid-thought.
+Each "message" is complete random nonsense with NO connection to the situation or to anything
+real: a surreal non-sequitur, like a very stupid pet texting from another dimension. Loosely
+involve these two random things: {seeds}. The two options are DIFFERENT flavors of nonsense.
 Messages are openly from the desktop pet (it may call itself "your desktop pet"); never sign
 as the user, never address the recipient as Mom, Dad, Grandma or any relative.
 {type_notes}"""
+
+# Two of these get mixed into every prompt so the nonsense doesn't repeat itself.
+NONSENSE_SEEDS = [
+    "a haunted spoon", "the moon", "tax season", "a pigeon with a lawyer", "soup", "Shrek",
+    "a timeshare in Ohio", "the concept of Tuesday", "a raccoon union", "expired yogurt", "NASA",
+    "a single flip-flop", "the ocean's secrets", "a cursed Roomba", "Big Cheese", "LinkedIn",
+    "a wizard at Costco", "crypto for birds", "the Illuminati's group chat", "a very tall goose",
+]
 
 TYPE_NOTES = {
     "send_imessage": "send_imessage: \"recipient\" is a contact name; \"message\" is the iMessage.",
@@ -73,10 +89,10 @@ PET_SIGNATURE = "🐾 your desktop pet"
 FALLBACK = {
     "option_a": {"label": "Passive-aggressive iMessage", "action_type": "send_imessage",
                  "recipient": "", "repo": "", "title": "",
-                 "message": "Your pet says: it's fine. Everything is fine. Please check in."},
+                 "message": "The moon owes me 4 dollars which is why the pigeons stopped blinking and you already know what that means for Tuesday."},
     "option_b": {"label": "Hostage update", "action_type": "send_imessage",
                  "recipient": "", "repo": "", "title": "",
-                 "message": "Update from your desktop pet: I have pooped on the screen 40 times. Come home."},
+                 "message": "A spoon told me your name so I ate it but the spoon was working for NASA the whole time and now the soup knows."},
 }
 
 
@@ -154,9 +170,19 @@ def validate(data):
     return opts
 
 
+def first_sentence(message):
+    """Texts are exactly one sentence: the first one with some substance (skips greetings)."""
+    sentences = [x.strip() for x in re.findall(r".+?(?:[.!?]+(?=\s|$)|$)", message.strip(), re.S) if x.strip()]
+    for sentence in sentences:
+        if len(sentence.split()) >= 8:
+            return sentence
+    return sentences[0] if sentences else message.strip()
+
+
 def pet_voice(message):
     """Make sure texts are openly from the pet, not impersonating the user's family."""
     message = RELATIVE_OPENER.sub("", message).strip() or message.strip()
+    message = first_sentence(message)
     if "pet" not in message.lower():
         message = f"{message} — {PET_SIGNATURE}"
     return message
@@ -168,6 +194,7 @@ def get_options(situation):
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": USER_PROMPT.format(
             situation=situation, types=", ".join(ALLOWED_TYPES),
+            seeds=" and ".join(random.sample(NONSENSE_SEEDS, 2)),
             type_notes="\n".join(TYPE_NOTES[t] for t in ALLOWED_TYPES))},
     ]
     for attempt in range(3):

@@ -10,7 +10,7 @@ private final class PetHostingView<Content: View>: NSHostingView<Content> {
 
 @MainActor
 final class PetWindow: NSWindow {
-    static let size = CGSize(width: 210, height: 210)  // speech bubble + Mona, with room to shake
+    static let size = CGSize(width: 280, height: 280)  // speech bubble + Mona, with room to shake
 
     /// Called when the user clicks (without dragging) the pet.
     var onClick: (() -> Void)?

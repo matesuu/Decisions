@@ -223,14 +223,14 @@
     /* ── Agent flow + terminal typing ─────────────────────── */
     var flow = $('#flow'), term = $('#term code');
     var TERM = [
-        ['<span class="c">$</span> python3 chaos_action.py <span class="g">"Ignored for 5 min. Pooped 23 times."</span>', 0],
+        ['<span class="c">$</span> python3 chaos_action.py <span class="g">"Starved to 0%. Pooped 23 times."</span>', 0],
         ['<span class="b">→</span> asking the LLM for two options <span class="c">(JSON mode)</span>', 1],
-        ['  option_a  <span class="g">"Hostage update"</span>', 1],
-        ['  option_b  <span class="g">"Passive-aggressive iMessage"</span>', 1],
+        ['  option_a  <span class="g">"Goose landlord"</span>', 1],
+        ['  option_b  <span class="g">"Soup conspiracy"</span>', 1],
         ['<span class="k">●</span> coin flip → <span class="k">option_b</span>', 2],
         ['<span class="b">→</span> Contacts: Mateo Alado → <span class="c">+1 ••• ••• ••42</span>', 3],
         ['<span class="b">→</span> opening Messages… <span class="g">sent ✓</span>', 4],
-        ['<span class="c">{"label": "Passive-aggressive iMessage", "outcome": "Opened Messages and texted Mateo Alado"}</span>', 4]
+        ['<span class="c">{"label": "Soup conspiracy", "outcome": "Opened Messages and texted Mateo Alado"}</span>', 4]
     ];
     if (flow && term) {
         var steps = $$('.step', flow), ran = false;

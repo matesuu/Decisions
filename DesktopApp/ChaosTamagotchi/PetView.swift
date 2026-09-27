@@ -8,7 +8,7 @@ struct PetView: View {
     var body: some View {
         VStack(spacing: 2) {
             SpeechBubble(text: engine.speechText)
-                .frame(height: 64, alignment: .bottom)
+                .frame(height: 76, alignment: .bottom)
             Sprite(mood: engine.mood, facingRight: engine.facingRight, face: engine.face, speaking: engine.speechText != nil)
         }
         .padding(.bottom, 18)
@@ -23,7 +23,7 @@ private struct SpeechBubble: View {
         ZStack {
             if let text {
                 Text(text)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(.black)
                     .multilineTextAlignment(.center)
                     .lineLimit(4)
@@ -216,7 +216,7 @@ private struct Sprite: View {
                 .resizable()
                 .interpolation(.none)
                 .antialiased(false)
-                .frame(width: 96, height: 96)
+                .frame(width: 150, height: 150)
                 .colorMultiply(Color(red: pose.red, green: pose.green, blue: pose.blue))
                 .scaleEffect(x: (facingRight ? -1 : 1) * pose.scaleX, y: pose.scaleY)
                 .rotationEffect(.degrees(pose.rotation))
@@ -224,7 +224,7 @@ private struct Sprite: View {
                 .opacity(pose.opacity)
                 .overlay(alignment: .topTrailing) {
                     if mood.showsBolt {
-                        Text("⚡️").font(.system(size: 18)).offset(x: 10, y: -6)
+                        Text("⚡️").font(.system(size: 26)).offset(x: 14, y: -8)
                     }
                 }
         }

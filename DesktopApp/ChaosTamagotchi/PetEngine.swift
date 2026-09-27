@@ -59,7 +59,7 @@ enum Mood: String {
         switch f {
         case ..<0.25: return .content
         case ..<0.5: return .restless
-        case ..<0.75: return .anxious
+        case ..<0.9: return .anxious
         case ..<1.0: return .feral
         default: return .committingCrimes
         }
@@ -92,8 +92,11 @@ final class PetEngine: ObservableObject {
     /// Debug-only override: set CHAOS_DEBUG_DEADLINE_SECONDS (e.g. 30) in the Xcode scheme
     /// to fast-forward through all moods. Never set in normal use.
     let deadlineSeconds: TimeInterval
-    private var elapsed: TimeInterval = 0
-    private var triggeredThisCycle = false
+    /// Fullness, 0...100. Drains every second, faster the emptier it gets; each click adds 50.
+    private var fullness: Double = 100
+    private var lastText = Date.distantPast
+    private var textInFlight = false
+    private let textInterval: TimeInterval = appEnvironment["CHAOS_TEXT_INTERVAL_SECONDS"].flatMap(Double.init) ?? 300
     private var sinceMischief: TimeInterval = 0
     private var direction: CGFloat = -1
     private var directionTimeLeft: TimeInterval = 5
@@ -107,6 +110,39 @@ final class PetEngine: ObservableObject {
     static var isArmed: Bool {
         get { UserDefaults.standard.bool(forKey: "chaosArmed") }
         set { UserDefaults.standard.set(newValue, forKey: "chaosArmed") }
+    }
+
+    /// Safe mode: the pet just roams and says cute things. No hunger, notes, crimes, tabs, music or texts.
+    static var isSafeMode: Bool {
+        get { UserDefaults.standard.bool(forKey: "safeMode") }
+        set { UserDefaults.standard.set(newValue, forKey: "safeMode") }
+    }
+
+    func setSafeMode(_ on: Bool) {
+        Self.isSafeMode = on
+        if on {
+            restoreEverything(announce: false)
+            say("safe mode. I'm just here to be cute now. 🌸", seconds: 4)
+        } else {
+            say("safe mode off. hehehe.", seconds: 3)
+        }
+    }
+
+    /// Undoes everything the pet did: poop, notes, wallpaper, desktop icons, music, its browser tabs, open ultimatum.
+    func restoreEverything(announce: Bool = true) {
+        hijackTimer?.invalidate()
+        hijackTimer = nil
+        UltimatumPanel.dismiss()
+        ultimatumOpen = false
+        let kit = mischiefKit
+        kit.cleanAllPoop()
+        kit.cleanAllNotes()
+        kit.restoreWallpaper(announce: false)
+        kit.restoreSpotify()
+        kit.closeOpenedTabs()
+        kit.restoreWindows()
+        restoreDesktopIcons(announce: false)
+        if announce { say("everything's back. I was never here.", seconds: 4) }
     }
 
     init() {
@@ -130,56 +166,68 @@ final class PetEngine: ObservableObject {
         }
     }
 
-    /// 0...1 fraction of time remaining.
-    var health: Double { max(0, min(1, secondsLeft / deadlineSeconds)) }
+    /// 0...1 fullness.
+    var health: Double { max(0, min(1, fullness / 100)) }
+
+    // Hunger drains at a + b·(100 − fullness) %/s: at empty it's `starveSpeedup`× faster than at full,
+    // and an ignored pet goes from 100 to 0 in exactly `starveSeconds` (CHAOS_STARVE_SECONDS, default 300).
+    private let starveSeconds: TimeInterval = appEnvironment["CHAOS_STARVE_SECONDS"].flatMap(Double.init) ?? 300
+    private let starveSpeedup = 10.0
+    private var drainB: Double { log(starveSpeedup) / starveSeconds }
+    private var drainA: Double { 100 * drainB / (starveSpeedup - 1) }
+    private func drainRate(at f: Double) -> Double { drainA + drainB * (100 - f) }
+
+    /// Seconds for an ignored pet to drain from fullness `f` down to `target`.
+    private func secondsToDrain(from f: Double, to target: Double) -> TimeInterval {
+        guard f > target else { return 0 }
+        return log(drainRate(at: target) / drainRate(at: f)) / drainB
+    }
 
     /// Seconds until the next mood tier, and its name (nil once committingCrimes).
     var nextTier: (name: String, seconds: TimeInterval)? {
-        let elapsed = deadlineSeconds - secondsLeft
-        for (f, name) in [(0.25, "restless"), (0.5, "anxious"), (0.75, "feral"), (1.0, "crimes")] where elapsed < deadlineSeconds * f {
-            return (name, deadlineSeconds * f - elapsed)
+        for (threshold, name) in [(75.0, "restless"), (50.0, "anxious"), (10.0, "feral"), (0.0, "crimes")] where fullness > threshold {
+            return (name, secondsToDrain(from: fullness, to: threshold))
         }
         return nil
     }
 
     // MARK: Check-in
 
+    /// One click = one meal: +50% fullness. It never resets the pet; you have to out-click the drain.
     func checkIn() {
-        NSLog("ChaosTamagotchi check-in (was %@s left)", String(Int(secondsLeft)))
-        elapsed = 0
-        secondsLeft = deadlineSeconds
-        triggeredThisCycle = false
-        sinceMischief = 0
-        mood = .content
-        didSpotifyThisCycle = false
-        didWallpaperThisCycle = false
-        mischiefKit.restoreWallpaper(announce: false)  // feeding earns your wallpaper back; poop stays
-        showFace(.happy, seconds: 4.5)
-        say("nom. fine. forgiven. for now.", seconds: 3)
+        fullness = min(100, fullness + 50)
+        updateHunger()
+        showFace(.happy, seconds: 0.8)
+        if speechText == nil {
+            say(["nom.", "+50%. acceptable.", "more.", "that's it?", "meal acquired.", "keep going."].randomElement()!, seconds: 1.5)
+        }
+    }
+
+    private func updateHunger() {
+        secondsLeft = secondsToDrain(from: fullness, to: 0)
+        let newMood = Mood.from(fraction: 1 - fullness / 100)
+        guard newMood != mood else { return }
+        mood = newMood
+        if newMood != .content {
+            faceTask?.cancel()
+            face = nil
+        }
     }
 
     // MARK: Tick (1 Hz)
 
-    /// How long you've stayed in the current frontmost app (fuel for sticky-note roasts).
-    private var frontAppID: String?
-    private var frontAppSeconds = 0
-    var minutesInFrontApp: Int { frontAppSeconds / 60 }
+    private var sinceNote: TimeInterval = 0
 
     private func tick() {
-        let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        if front != Bundle.main.bundleIdentifier {
-            if front != frontAppID { frontAppID = front; frontAppSeconds = 0 } else { frontAppSeconds += 1 }
+        // Safe mode: roam and say cute things. Nothing else.
+        if Self.isSafeMode {
+            fullness = 100
+            updateHunger()
+            chatter()
+            return
         }
-        elapsed += 1
-        secondsLeft = max(0, deadlineSeconds - elapsed)
-        let newMood = Mood.from(fraction: elapsed / deadlineSeconds)
-        if newMood != mood {
-            mood = newMood
-            if newMood != .content {
-                faceTask?.cancel()
-                face = nil
-            }
-        }
+        fullness = max(0, fullness - drainRate(at: fullness))
+        updateHunger()
 
         // Scale mischief cadence down when the deadline is shortened for debugging.
         let scale = min(1, deadlineSeconds / 1800)
@@ -192,8 +240,35 @@ final class PetEngine: ObservableObject {
 
         chatter()
 
-        if mood == .committingCrimes && !triggeredThisCycle {
-            triggeredThisCycle = true
+        // A nonsense sticky note about once a minute.
+        sinceNote += 1
+        if sinceNote >= 60 {
+            sinceNote = 0
+            mischiefKit.stickyNoteRoast()
+        }
+
+        // Every 2–4 minutes, a Mommy ASMR video. Always. No matter what.
+        sinceASMR += 1
+        if sinceASMR >= nextASMR {
+            sinceASMR = 0
+            nextASMR = .random(in: 120...240)
+            mischiefKit.openMommyASMR()
+        }
+
+        // Feral (10% and below): every 30 seconds, new tabs.
+        if mood == .feral || mood == .committingCrimes {
+            sinceBarrage += 1
+            if sinceBarrage >= 30 {
+                sinceBarrage = 0
+                feralBarrage()
+            }
+        } else {
+            sinceBarrage = 0
+        }
+
+        // Last resort: only at 0%, and at most every CHAOS_TEXT_INTERVAL_SECONDS (default 300), it texts your friend.
+        if mood == .committingCrimes && !textInFlight && Date().timeIntervalSince(lastText) >= textInterval {
+            lastText = Date()
             commitCrime()
         }
     }
@@ -241,8 +316,10 @@ final class PetEngine: ObservableObject {
     // MARK: Mischief (never synthesizes keystrokes into other apps)
 
     /// Per-cycle one-shots so the heavy stunts don't repeat every few seconds.
-    private var didSpotifyThisCycle = false
-    private var didWallpaperThisCycle = false
+    private var lastSpotify = Date.distantPast
+    private var sinceBarrage: TimeInterval = 0
+    private var sinceASMR: TimeInterval = 0
+    private var nextASMR: TimeInterval = .random(in: 120...240)
     private(set) lazy var mischiefKit = MischiefKit(engine: self)
 
     /// One stunt the pet can pull. It announces itself in the speech bubble, then does it.
@@ -260,25 +337,19 @@ final class PetEngine: ObservableObject {
         if Bool.random() {
             kit.dropPoop(count: mood == .feral || mood == .committingCrimes ? 2 : 1)
         }
-        // Mild crimes are the bread and butter; the big ones only show up once she's feral.
+        // Mild crimes are the bread and butter; the severe ones unlock as it gets hungrier.
         var pool: [Crime] = [
             Crime(name: "boop your cursor", weight: 4, lines: ["boop.", "your cursor looks lonely.", "don't mind me…"], run: { self.nudgeCursor() }),
-            Crime(name: "leave a sticky note", weight: 3, lines: ["writing you a note.", "I have FEEDBACK.", "one sec, leaving a review."], run: { kit.stickyNoteRoast() }),
         ]
         if mood != .content {
             pool.append(Crime(name: "shove your window", weight: 3, lines: ["this window's in my spot.", "scoot.", "rearranging. hold still."], run: { kit.nudgeFrontWindow() }))
             pool.append(Crime(name: "hijack your mouse", weight: 2, severe: true, lines: ["gimme the mouse.", "my turn to drive.", "MINE."], run: { self.hijackCursor() }))
+            if Date().timeIntervalSince(lastSpotify) > 60 {
+                pool.append(Crime(name: "pick the music", weight: 1, severe: true, lines: ["let me pick the music. 🎶", "DJ time."], run: { self.lastSpotify = Date(); kit.spotifyRevenge() }))
+            }
         }
         if mood == .anxious || mood == .feral || mood == .committingCrimes {
             pool.append(Crime(name: "steal a folder", weight: 2, severe: true, lines: ["ooh, a folder.", "that folder? mine now.", "redecorating your desktop."], run: { self.grabDesktopFolder() }))
-        }
-        if mood == .feral || mood == .committingCrimes {
-            if !didSpotifyThisCycle {
-                pool.append(Crime(name: "pick the music", weight: 1, severe: true, lines: ["let me pick the music. 🎶", "DJ time."], run: { self.didSpotifyThisCycle = true; kit.spotifyRevenge() }))
-            }
-            if !didWallpaperThisCycle {
-                pool.append(Crime(name: "redo your wallpaper", weight: 1, severe: true, lines: ["your wallpaper is boring.", "I'm redecorating."], run: { self.didWallpaperThisCycle = true; kit.wallpaperTakeover() }))
-            }
         }
         let draw = { () -> Crime in
             var roll = Int.random(in: 0..<pool.reduce(0) { $0 + $1.weight })
@@ -312,6 +383,13 @@ final class PetEngine: ObservableObject {
     }
 
     private var ultimatumOpen = false
+
+    /// The every-30-seconds feral routine: a new Mommy ASMR tab, then a random Google Images tab.
+    private func feralBarrage() {
+        let kit = mischiefKit
+        kit.openMommyASMR()
+        after(4) { kit.openRandomImages() }
+    }
 
     /// Fake threats for the fakeout ultimatum when the LLM is unavailable.
     nonisolated private static let cannedFakeThreats = [
@@ -372,12 +450,17 @@ final class PetEngine: ObservableObject {
         guard speechText == nil, sinceChatter >= nextChatter else { return }
         sinceChatter = 0
         nextChatter = .random(in: 14...30)
-        let lines: [String] = switch mood {
-        case .content: ["hi :3", "*yawn*", "…", "👀", "nice screen.", "pet me?", "prrr"]
-        case .restless: ["bored.", "hellooo?", "feed me?", "*taps foot*", "I'm right here."]
-        case .anxious: ["you forgot me.", "hungry.", "HELLO??", "*stares*", "this is fine."]
-        case .feral, .committingCrimes: ["hehehe", "no rules.", "chaos o'clock.", "you did this.", "*gremlin noises*"]
-        }
+        let chaos: [String] = switch mood {
+            case .content: ["the walls are listening. to me. finally.", "I licked the wifi.", "do you ever just vibrate.",
+                            "I am 40% soup.", "who moved the moon.", "prrr"]
+            case .restless: ["Tuesday is coming. act natural.", "the cursor knows.", "I invented jazz.", "feed me or I tell the pigeons."]
+            case .anxious: ["my lawyer is a pigeon.", "the fridge is plotting.", "HELLO??", "I can hear the pixels."]
+            case .feral, .committingCrimes: ["hehehe", "no rules.", "the geese have spoken.", "you did this.", "*gremlin noises*"]
+            }
+        let lines = Self.isSafeMode
+            ? ["hi :3", "you're doing great!", "prrr", "I like it here.", "nice screen!", "you're my favorite human.",
+               "*happy wiggle*", "drink some water! 💧", "proud of you.", "*purrs quietly*"]
+            : chaos
         say(lines.randomElement()!, seconds: 2.5)
     }
 
@@ -560,7 +643,7 @@ final class PetEngine: ObservableObject {
         }
     }
 
-    func restoreDesktopIcons() {
+    func restoreDesktopIcons(announce: Bool = true) {
         let backup = Self.desktopBackup
         guard let text = try? String(contentsOfFile: backup, encoding: .utf8) else { return }
         Task.detached {
@@ -574,7 +657,7 @@ final class PetEngine: ObservableObject {
             script += "end tell"
             _ = Self.osascript(script)
             try? FileManager.default.removeItem(atPath: backup)
-            await MainActor.run { [weak self] in self?.say("Fine. Desktop restored.") }
+            if announce { await MainActor.run { [weak self] in self?.say("Fine. Desktop restored.") } }
         }
     }
 
@@ -617,13 +700,18 @@ final class PetEngine: ObservableObject {
         }
     }
 
+    /// Appended to every LLM system prompt so all generated lines share one voice.
+    nonisolated static let llmVoice = " Voice: satirical and gloriously dumb. Deliver it with total deadpan confidence "
+        + "and completely broken logic, like a very stupid pet who is sure it's a genius. Witty, but idiotic: "
+        + "absurd non-sequiturs, wrong conclusions, fake facts stated proudly."
+
     nonisolated static func requestLine(system: String, user: String, maxTokens: Int) async -> String? {
         guard let key = appEnvironment["FEATHERLESS_API_KEY"], !key.isEmpty,
               let url = URL(string: "https://api.featherless.ai/v1/chat/completions") else { return nil }
         let model = appEnvironment["FEATHERLESS_MODEL"] ?? "mistralai/Mistral-Nemo-Instruct-2407"
         let body: [String: Any] = [
             "model": model, "temperature": 0.9, "max_tokens": maxTokens,
-            "messages": [["role": "system", "content": system], ["role": "user", "content": user]],
+            "messages": [["role": "system", "content": system + llmVoice], ["role": "user", "content": user]],
         ]
         var req = URLRequest(url: url, timeoutInterval: 20)
         req.httpMethod = "POST"
@@ -646,11 +734,13 @@ final class PetEngine: ObservableObject {
         let minutes = Int((deadlineSeconds / 60).rounded())
         let poop = mischiefKit.poopCount
         let situation = "The user ignored their desktop pet for the full \(minutes) minutes. The pet has already pooped on their screen \(poop) times, left sticky notes, shoved their windows around and hijacked their cursor. Now it texts their friend to complain about them."
-        say("that's it. I'm texting your friend.", seconds: 4)
+        say(["texting your friend.", "your friend needs to hear this.", "sending a message. don't worry about it."].randomElement()!, seconds: 4)
         let armed = Self.isArmed
+        textInFlight = true
         Task { [weak self] in
             let entry = await Self.runSidecar(situation: situation, armed: armed)
             guard let self else { return }
+            self.textInFlight = false
             NSLog("ChaosTamagotchi sidecar result: %@ | %@", entry.label, entry.outcome)
             self.record(entry.label, entry.outcome)
             self.say(entry.outcome.hasPrefix("[FAILED]") ? "ugh. it didn't send." : entry.outcome.hasPrefix("[DRY RUN]") ? "(pretend I just texted them.)" : "done. they know now. 😈", seconds: 5)

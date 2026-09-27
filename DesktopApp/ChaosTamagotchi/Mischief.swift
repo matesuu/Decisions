@@ -45,36 +45,51 @@ final class MischiefKit {
         }
     }
 
+    func cleanAllNotes() {
+        notes.forEach { $0.close() }
+        notes.removeAll()
+    }
+
     func cleanAllPoop() {
         poops.forEach { $0.close() }
         poops.removeAll()
     }
 
-    // MARK: Sticky notes: LLM roast of whatever app you're in instead of the pet
+    // MARK: Sticky notes: LLM-written random nonsense
 
     private static let maxNotes = 8
     private var notes: [ClickAwayPanel] = []
     private static let cannedRoasts = [
-        "I saw that tab.",
-        "Oh, {app} again? Riveting.",
-        "{app} won't love you back. I would. If you fed me.",
-        "Still in {app}. I'm telling everyone.",
-        "Touch grass. Or me. Preferably me.",
+        "The moon called. It wants its spoon back. I said you'd handle it.",
+        "Fun fact: pigeons can't do taxes. Neither can you. Coincidence?",
+        "I have sold your left sock to a wizard. No refunds.",
+        "Tuesday is a government psyop. Soup agrees.",
+        "A goose is looking for you. He knows what you did.",
     ]
 
+    /// Sticky notes channel Matan Even's absurdist prank-interviewer comedy (still signed by the pet).
+    private static let noteVoice = "Write it in the style of Matan Even, the teen prank comedian who crashes events and "
+        + "interviews people: deadpan, weirdly earnest, asks one unhinged interview question or states a confidently "
+        + "wrong hot take, awkward and chaotic, like he's holding a mic up to their face. Don't claim to be him or mention his name. "
+
+    /// Two of these get mixed into every note so the nonsense doesn't repeat itself.
+    private static let nonsenseSeeds = [
+        "a haunted spoon", "the moon", "tax season", "a pigeon with a lawyer", "soup", "Shrek",
+        "a timeshare in Ohio", "the concept of Tuesday", "a raccoon union", "expired yogurt", "NASA",
+        "a single flip-flop", "the ocean's secrets", "a cursed Roomba", "Big Cheese", "LinkedIn",
+        "a wizard at Costco", "crypto for birds", "the Illuminati's group chat", "a very tall goose",
+    ]
+
+    /// A sticky note of complete random nonsense (nothing to do with what you're doing).
     func stickyNoteRoast() {
-        let app = NSWorkspace.shared.frontmostApplication
-        let appName = (app?.bundleIdentifier == Bundle.main.bundleIdentifier ? nil : app?.localizedName) ?? "your computer"
-        let windowTitle = app.flatMap { Self.focusedWindowTitle(pid: $0.processIdentifier) } ?? ""
-        let minutes = engine.minutesInFrontApp
+        let seeds = Self.nonsenseSeeds.shuffled().prefix(2).joined(separator: " and ")
         Task { [weak self] in
-            let context = "They're in \(appName)" + (windowTitle.isEmpty ? "" : " (window: \"\(windowTitle.prefix(80))\")")
-                + " and have been for about \(minutes) minute\(minutes == 1 ? "" : "s") instead of feeding you."
             let line = await PetEngine.requestLine(
-                system: "You are a smug, passive-aggressive desktop pet leaving a sticky note for your owner. "
-                    + "Write ONE short roast (under 18 words) about the app they're using. No quotes, no hashtags. Playful, not cruel.",
-                user: context, maxTokens: 60)
-                ?? Self.cannedRoasts.randomElement()!.replacingOccurrences(of: "{app}", with: appName)
+                system: Self.noteVoice + "You are a very stupid desktop pet leaving a sticky note for your owner. "
+                    + "Write ONE line (under 18 words) of complete random nonsense: a surreal non-sequitur with no "
+                    + "connection to computers, apps or what they're doing. No quotes, no hashtags.",
+                user: "Loosely involve: \(seeds).", maxTokens: 60)
+                ?? Self.cannedRoasts.randomElement()!
             self?.showStickyNote(line)
         }
     }
@@ -110,20 +125,85 @@ final class MischiefKit {
         engine.record("Left a sticky note", text, show: false)
     }
 
-    /// Title of an app's focused window via Accessibility (nil without permission).
-    private static func focusedWindowTitle(pid: pid_t) -> String? {
-        guard AXIsProcessTrusted() else { return nil }
-        var win: CFTypeRef?, title: CFTypeRef?
-        let app = AXUIElementCreateApplication(pid)
-        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &win) == .success,
-              let win, AXUIElementCopyAttributeValue(win as! AXUIElement, kAXTitleAttribute as CFString, &title) == .success
-        else { return nil }
-        return title as? String
+    // MARK: Browser chaos: Mommy ASMR videos, random Google Images, tab switching (default browser)
+
+    private static let asmrSearches = [
+        "mommy asmr", "mommy asmr comforting you", "mommy asmr roleplay", "mommy asmr tucking you in",
+        "mommy asmr after a long day", "mommy asmr you did your best", "mommy asmr soft spoken",
+    ]
+
+    /// Finds a Mommy ASMR video on YouTube and opens its watch page (which autoplays); falls back to the search page.
+    func openMommyASMR() {
+        let q = Self.asmrSearches.randomElement()!
+        var c = URLComponents(string: "https://www.youtube.com/results")!
+        c.queryItems = [URLQueryItem(name: "search_query", value: q)]
+        guard let search = c.url else { return }
+        engine.say(["found something for you.", "you seemed stressed.", "this one's for you. 🍼", "you're welcome."].randomElement()!, seconds: 3)
+        Task { [weak self] in
+            var target = search
+            // YouTube only includes video IDs for browser user agents.
+            var req = URLRequest(url: search, timeoutInterval: 10)
+            req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15", forHTTPHeaderField: "User-Agent")
+            if let (data, _) = try? await URLSession.shared.data(for: req) {
+                let html = String(decoding: data, as: UTF8.self)
+                let ids = html.matches(of: #/"videoId":"([A-Za-z0-9_-]{11})"/#).map { String($0.1) }
+                if let id = Array(Set(ids.prefix(20))).randomElement(),
+                   let watch = URL(string: "https://www.youtube.com/watch?v=\(id)") { target = watch }
+            }
+            NSWorkspace.shared.open(target)
+            self?.openedTabMarkers.append(target.absoluteString.contains("watch?v=")
+                ? ["youtube.com/watch", String(target.absoluteString.suffix(11))] : ["youtube.com/results", "mommy"])
+            self?.engine.record("Mommy ASMR", "Opened \(target.absoluteString) (\(q)).", show: false)
+        }
+    }
+
+    /// Opens Google Images for two random nonsense things.
+    func openRandomImages() {
+        let q = Self.nonsenseSeeds.shuffled().prefix(2).joined(separator: " ")
+        var c = URLComponents(string: "https://www.google.com/search")!
+        c.queryItems = [URLQueryItem(name: "tbm", value: "isch"), URLQueryItem(name: "q", value: q)]
+        guard let url = c.url else { return }
+        NSWorkspace.shared.open(url)
+        let keyword = q.split(separator: " ").map(String.init).first { $0.count >= 4 } ?? q
+        openedTabMarkers.append(["google.com/search", keyword])
+        engine.say(["look at this.", "important research.", "I found pictures of you."].randomElement()!, seconds: 3)
+        engine.record("Random images", "Opened Google Images for \"\(q)\".", show: false)
+    }
+
+    /// Substrings identifying each tab the pet opened (every one must appear in the tab's URL).
+    private var openedTabMarkers: [[String]] = []
+
+    /// Closes every browser tab the pet opened (Safari or Chromium browsers).
+    func closeOpenedTabs() {
+        guard !openedTabMarkers.isEmpty else { return }
+        let appURL = NSWorkspace.shared.urlForApplication(toOpen: URL(string: "https://example.com")!)
+        let id = appURL.flatMap { Bundle(url: $0)?.bundleIdentifier }?.lowercased() ?? "com.apple.safari"
+        let app = id == "com.apple.safari" ? "Safari"
+            : appURL.map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") } ?? "Safari"
+        func q(_ s: String) -> String { "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\"" }
+        let closes = openedTabMarkers.map { markers in
+            "try\nclose (every tab of w whose " + markers.map { "URL contains \(q($0))" }.joined(separator: " and ") + ")\nend try"
+        }.joined(separator: "\n")
+        openedTabMarkers.removeAll()
+        let script = "tell application \(q(app))\nrepeat with w in (every window)\n\(closes)\nend repeat\nend tell"
+        Task.detached { _ = PetEngine.osascript(script) }
     }
 
     // MARK: Window nudge: slowly drags your frontmost window off-center (needs Accessibility)
 
     private var nudgeTimer: Timer?
+    /// Each shoved window's position before the pet first touched it, so Restore Everything can put it back.
+    private var movedWindows: [(window: AXUIElement, origin: CGPoint)] = []
+
+    func restoreWindows() {
+        nudgeTimer?.invalidate()
+        nudgeTimer = nil
+        for (win, origin) in movedWindows {
+            var p = origin
+            if let v = AXValueCreate(.cgPoint, &p) { AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, v) }
+        }
+        movedWindows.removeAll()
+    }
 
     func nudgeFrontWindow() {
         guard nudgeTimer == nil else { return }
@@ -142,6 +222,7 @@ final class MischiefKit {
               let posRef else { return }
         var start = CGPoint.zero
         AXValueGetValue(posRef as! AXValue, .cgPoint, &start)
+        if !movedWindows.contains(where: { CFEqual($0.window, win) }) { movedWindows.append((win, start)) }
 
         let angle = Double.random(in: 0..<(2 * .pi))
         let distance = CGFloat.random(in: 60...160)
@@ -165,27 +246,79 @@ final class MischiefKit {
         }
     }
 
-    // MARK: Spotify revenge: plays "All By Myself", then puts your music back
+    // MARK: Spotify revenge: plays a random rage track for 5 seconds, then puts your music back (or quits Spotify)
 
-    nonisolated private static let revengeTrack = "spotify:track:0gsl92EMIScPGV1AU35nuD"  // Céline Dion, All By Myself
-    nonisolated private static let revengeSeconds: UInt64 = 35
+    /// Ken Carson, OsamaSon, xaviersobased and Playboi Carti only.
+    nonisolated private static let revengeTracks = [
+        "spotify:track:6SvcMxtaNmRRfZ5ml1O1st",  // Ken Carson, ss
+        "spotify:track:0HTIrbUwwFn984RzVZm5Fk",  // Ken Carson, Yale
+        "spotify:track:0EMaW6H0JkB84B8ebkkDrI",  // Ken Carson, Money Spread
+        "spotify:track:7lKlyL4o7t9NKXIHuu7caH",  // Ken Carson, wedidit (with Playboi Carti)
+        "spotify:track:5gYA1mQYa4WMR9jDLL79Uv",  // OsamaSon, Insta
+        "spotify:track:7iZqma5DV0h12Orxlb20VU",  // OsamaSon, Addicted
+        "spotify:track:6IoVm0ggNarpZNAGZz8mtc",  // OsamaSon, DEMON HOME
+        "spotify:track:2vYh6so4qZBPLEYFyWwh2o",  // xaviersobased, fly (feat. Backend)
+        "spotify:track:3WQfLuSH0Az2tzVoCz6OCE",  // Playboi Carti, ALL RED
+    ]
+    nonisolated private static let revengeSeconds: UInt64 = 5
+
+    /// Bumped on every revenge play; only the newest one restores your music.
+    private var spotifyGeneration = 0
+    /// What was playing before the current chain of revenge tracks started ("state|track id|position").
+    private var spotifySaved: String?
+
+    /// Resumes what was playing, pauses if it was paused, or quits Spotify if the pet launched it.
+    nonisolated private static func putMusicBack(_ saved: String) {
+        let parts = saved.components(separatedBy: "|")
+        if saved.isEmpty {
+            _ = PetEngine.osascript("tell application \"Spotify\" to quit")
+        } else if parts.count == 3, parts[0] == "playing", !revengeTracks.contains(parts[1]) {
+            let pos = Double(parts[2].replacingOccurrences(of: ",", with: ".")) ?? 0
+            _ = PetEngine.osascript("""
+                tell application "Spotify"
+                  play track "\(parts[1])"
+                  delay 0.5
+                  set player position to \(pos)
+                end tell
+                """)
+        } else {
+            _ = PetEngine.osascript("tell application \"Spotify\" to pause")
+        }
+    }
+
+    /// Puts your music back right away (or pauses if nothing was playing) and cancels any pending restore.
+    func restoreSpotify() {
+        guard let saved = spotifySaved else { return }
+        spotifyGeneration += 1
+        spotifySaved = nil
+        Task.detached {
+            Self.putMusicBack(saved)
+        }
+    }
 
     func spotifyRevenge() {
         guard NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.spotify.client") != nil else {
             engine.record("Spotify revenge skipped", "Spotify isn't installed.", show: false)
             return
         }
+        let track = Self.revengeTracks.randomElement()!
+        spotifyGeneration += 1
+        let generation = spotifyGeneration
+        let saveFirst = spotifySaved == nil
         Task.detached { [weak self] in
             // Remember what was playing so we can put it back.
-            let wasRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty
-            let before = wasRunning ? PetEngine.osascript("""
-                tell application "Spotify"
-                  return (player state as text) & "|" & (id of current track) & "|" & (player position as text)
-                end tell
-                """).trimmingCharacters(in: .whitespacesAndNewlines) : ""
+            if saveFirst {
+                let wasRunning = !NSRunningApplication.runningApplications(withBundleIdentifier: "com.spotify.client").isEmpty
+                let before = wasRunning ? PetEngine.osascript("""
+                    tell application "Spotify"
+                      return (player state as text) & "|" & (id of current track) & "|" & (player position as text)
+                    end tell
+                    """).trimmingCharacters(in: .whitespacesAndNewlines) : ""
+                await MainActor.run { [weak self] in self?.spotifySaved = before }
+            }
             let out = PetEngine.osascript("""
                 tell application "Spotify"
-                  play track "\(Self.revengeTrack)"
+                  play track "\(track)"
                   delay 1
                   return name of current track
                 end tell
@@ -193,44 +326,23 @@ final class MischiefKit {
             await MainActor.run { [weak self] in
                 self?.engine.record("Spotify revenge", out.isEmpty
                     ? "Couldn't control Spotify (allow Automation for Spotify in System Settings)."
-                    : "Now playing: \(out). Your music comes back in \(Self.revengeSeconds)s.")
+                    : "Now playing: \(out). Your music comes back \(Self.revengeSeconds)s after the last one.")
             }
             guard !out.isEmpty else { return }
             try? await Task.sleep(nanoseconds: Self.revengeSeconds * 1_000_000_000)
-            let parts = before.components(separatedBy: "|")
-            if parts.count == 3, parts[0] == "playing", parts[1] != Self.revengeTrack {
-                let pos = Double(parts[2].replacingOccurrences(of: ",", with: ".")) ?? 0
-                _ = PetEngine.osascript("""
-                    tell application "Spotify"
-                      play track "\(parts[1])"
-                      delay 0.5
-                      set player position to \(pos)
-                    end tell
-                    """)
-            } else {
-                _ = PetEngine.osascript("tell application \"Spotify\" to pause")
+            let before: String? = await MainActor.run { [weak self] in
+                guard let self, generation == self.spotifyGeneration else { return nil }  // a newer track took over
+                defer { self.spotifySaved = nil }
+                return self.spotifySaved ?? ""
             }
-            _ = self
+            guard let before else { return }
+            Self.putMusicBack(before)
         }
     }
 
-    // MARK: Wallpaper takeover: sad pet portrait on every screen; feeding (or Restore) undoes it
+    // MARK: Wallpaper: the sad-pet takeover is gone; this only undoes one left over from older builds
 
     private static let wallpaperBackup = NSString(string: "~/.chaos_tamagotchi_wallpaper.txt").expandingTildeInPath
-
-    func wallpaperTakeover() {
-        let ws = NSWorkspace.shared
-        guard let portrait = Self.renderSadPortrait() else { return }
-        if !FileManager.default.fileExists(atPath: Self.wallpaperBackup) {  // keep the real originals only
-            let lines = NSScreen.screens.compactMap { ws.desktopImageURL(for: $0)?.path }
-            try? lines.joined(separator: "\n").write(toFile: Self.wallpaperBackup, atomically: true, encoding: .utf8)
-        }
-        for screen in NSScreen.screens {
-            try? ws.setDesktopImageURL(portrait, for: screen, options: [.imageScaling: NSImageScaling.scaleProportionallyUpOrDown.rawValue])
-        }
-        engine.say("do you like it? it's me. sad.", seconds: 4)
-        engine.record("Wallpaper takeover", "Your wallpaper is now a sad pet portrait. Feed the pet (or Restore Wallpaper) to get it back.")
-    }
 
     func restoreWallpaper(announce: Bool = true) {
         guard let text = try? String(contentsOfFile: Self.wallpaperBackup, encoding: .utf8) else { return }
@@ -246,39 +358,6 @@ final class MischiefKit {
 
     /// Draws the pet, tinted blue and small in a huge empty room, with a sad caption. Unique file name
     /// each time because macOS caches wallpapers by path.
-    private static func renderSadPortrait() -> URL? {
-        let size = NSSize(width: 2560, height: 1600)
-        let img = NSImage(size: size)
-        img.lockFocus()
-        NSGradient(starting: NSColor(calibratedRed: 0.05, green: 0.07, blue: 0.16, alpha: 1),
-                   ending: NSColor(calibratedRed: 0.16, green: 0.2, blue: 0.35, alpha: 1))?.draw(in: NSRect(origin: .zero, size: size), angle: 90)
-        if let url = Bundle.main.url(forResource: "mona-sad", withExtension: "gif")
-            ?? Bundle.main.url(forResource: "mona-loading-default", withExtension: "gif"),
-           let pet = NSImage(contentsOf: url) {
-            let side: CGFloat = 520
-            pet.draw(in: NSRect(x: (size.width - side) / 2, y: 520, width: side, height: side),
-                     from: .zero, operation: .sourceOver, fraction: 0.85)
-        }
-        let tear = NSAttributedString(string: "💧", attributes: [.font: NSFont.systemFont(ofSize: 90)])
-        tear.draw(at: NSPoint(x: size.width / 2 + 90, y: 820))
-        let para = NSMutableParagraphStyle()
-        para.alignment = .center
-        let caption = NSAttributedString(string: "you left me here.\nall by myself.", attributes: [
-            .font: NSFont.systemFont(ofSize: 96, weight: .heavy), .foregroundColor: NSColor.white.withAlphaComponent(0.9),
-            .paragraphStyle: para])
-        caption.draw(in: NSRect(x: 0, y: 200, width: size.width, height: 260))
-        img.unlockFocus()
-
-        guard let tiff = img.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
-        else { return nil }
-        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ChaosTamagotchi", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil))?
-            .filter { $0.lastPathComponent.hasPrefix("sad_pet_") }.forEach { try? FileManager.default.removeItem(at: $0) }
-        let file = dir.appendingPathComponent("sad_pet_\(Int(Date().timeIntervalSince1970)).png")
-        return (try? png.write(to: file)) != nil ? file : nil
-    }
 }
 
 /// Small borderless floating panel that closes itself when clicked (poop, sticky notes).
