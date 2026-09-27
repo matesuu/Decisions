@@ -22,7 +22,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         menu.addItem(infoItem)
         menu.addItem(.separator())
 
-        let feed = NSMenuItem(title: "Feed (+50%)", action: #selector(feed), keyEquivalent: "f")
+        let feed = NSMenuItem(title: "Feed (+15%)", action: #selector(feed), keyEquivalent: "f")
         feed.target = self
         menu.addItem(feed)
         armedItem.action = #selector(toggleArmed)

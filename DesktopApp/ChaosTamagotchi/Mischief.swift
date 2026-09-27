@@ -189,7 +189,7 @@ final class MischiefKit {
         Task.detached { _ = PetEngine.osascript(script) }
     }
 
-    // MARK: Window nudge: slowly drags your frontmost window off-center (needs Accessibility)
+    // MARK: Window nudge: walks the frontmost window around a tiny square (needs Accessibility)
 
     private var nudgeTimer: Timer?
     /// Each shoved window's position before the pet first touched it, so Restore Everything can put it back.
@@ -224,23 +224,29 @@ final class MischiefKit {
         AXValueGetValue(posRef as! AXValue, .cgPoint, &start)
         if !movedWindows.contains(where: { CFEqual($0.window, win) }) { movedWindows.append((win, start)) }
 
-        let angle = Double.random(in: 0..<(2 * .pi))
-        let distance = CGFloat.random(in: 60...160)
-        let delta = CGPoint(x: cos(angle) * distance, y: sin(angle) * distance)
-        let steps = 60
-        var i = 0
-        nudgeTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] t in
+        let side: CGFloat = 5
+        let corners = [
+            CGPoint(x: start.x + side, y: start.y),
+            CGPoint(x: start.x + side, y: start.y + side),
+            CGPoint(x: start.x, y: start.y + side),
+            start,
+        ]
+        let laps = 5
+        let totalMoves = corners.count * laps
+        var move = 0
+        // Jump a full five pixels at each corner. Smooth sub-pixel motion gets rounded away by
+        // some apps, while these held corner positions make the tiny square visibly wobble.
+        nudgeTimer = Timer.scheduledTimer(withTimeInterval: 0.18, repeats: true) { [weak self] t in
             MainActor.assumeIsolated {
-                i += 1
-                let k = CGFloat(i) / CGFloat(steps)
-                var p = CGPoint(x: start.x + delta.x * k, y: max(25, start.y + delta.y * k))
+                var p = corners[move % corners.count]
                 if let v = AXValueCreate(.cgPoint, &p) {
                     AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, v)
                 }
-                if i >= steps {
+                move += 1
+                if move >= totalMoves {
                     t.invalidate()
                     self?.nudgeTimer = nil
-                    self?.engine.record("Nudged your window", "\(app.localizedName ?? "Some app") moved \(Int(distance)) px. Deal with it.", show: false)
+                    self?.engine.record("Nudged your window", "\(app.localizedName ?? "Some app") walked a visible 5 px square five times.", show: false)
                 }
             }
         }

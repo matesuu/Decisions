@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pickle — Meet your new desktop menace</title>
-    <meta name="description" content="Pickle is a macOS desktop pet agent. Ignore it and it escalates: screen poop, sticky-note roasts, window shoving, Spotify revenge, ultimatums, and finally an LLM-written iMessage to your friend." />
+    <meta name="description" content="Pickle is a macOS desktop pet that stays cute while full, then escalates from screen poop and sticky notes to desktop chaos, ultimatums, and one last-resort iMessage." />
     <meta property="og:title" content="Pickle — Meet your new desktop menace" />
     <meta property="og:description" content="A desktop pet agent that gets worse the longer you ignore it." />
     <meta property="og:type" content="website" />
@@ -43,7 +43,7 @@
         <section class="hero">
             <div class="hero-copy">
                 <h1 class="h1 reveal">Meet your new<br /><span class="swap"><span data-swap>Desktop Menace</span></span></h1>
-                <p class="lede reveal" style="--d:100ms">Pickle is a desktop pet agent for your Mac. Feed it and it's adorable. Ignore it and it gets worse, announcing every crime right before it commits it, until it texts your friends about you.</p>
+                <p class="lede reveal" style="--d:100ms">Pickle is a desktop pet for your Mac. Above 85% it just wanders around being cute. Let its hunger drain and it escalates from poop and sticky notes to full desktop chaos.</p>
                 <div class="reveal" style="--d:200ms">
                     <a class="btn btn-rust" href="#setup"><span class="apple" aria-hidden="true"></span>Get for Mac</a>
                 </div>
@@ -99,7 +99,7 @@
                     <div class="demo-dock">
                         <span class="chip" id="demo-chip">content</span>
                         <div class="demo-meter"><span id="demo-meter"></span></div>
-                        <button class="btn btn-soft btn-xs" id="demo-feed" type="button">Feed Pickle</button>
+                        <button class="btn btn-soft btn-xs" id="demo-feed" type="button">Feed +15%</button>
                     </div>
                 </div>
                 <img class="stage-pet" src="assets/pet.gif" width="64" height="64" alt="" />
@@ -131,12 +131,12 @@
                 </article>
                 <article class="panel reveal" style="--d:120ms">
                     <h3>Escalates on a timer</h3>
-                    <p>A hunger bar drains, faster the emptier it gets. Every tier unlocks worse behavior, and each crime gets announced first. Each click feeds it 50%.</p>
+                    <p>Hunger drains from 100% to 0% in three minutes, faster near empty. Above 85% Pickle is harmless. Every feed adds 15%; every lower tier unlocks worse behavior.</p>
                     <div class="tiers-art" aria-hidden="true">
-                        <div class="tier-card" style="--i:0"><b>content</b><span>weird chatter</span><em style="--h:100%"></em></div>
-                        <div class="tier-card" style="--i:1"><b>restless</b><span>window shove</span><em style="--h:72%"></em></div>
-                        <div class="tier-card" style="--i:2"><b>anxious</b><span>folder heist</span><em style="--h:48%"></em></div>
-                        <div class="tier-card hot" style="--i:3"><b>feral</b><span>new tabs</span><em style="--h:22%"></em></div>
+                        <div class="tier-card" style="--i:0"><b>content</b><span>cute &amp; harmless</span><em style="--h:100%"></em></div>
+                        <div class="tier-card" style="--i:1"><b>restless</b><span>poop + notes</span><em style="--h:72%"></em></div>
+                        <div class="tier-card" style="--i:2"><b>anxious</b><span>desktop antics</span><em style="--h:48%"></em></div>
+                        <div class="tier-card hot" style="--i:3"><b>feral</b><span>poop piles + tabs</span><em style="--h:22%"></em></div>
                         <div class="tier-card crime" style="--i:4"><b>crimes</b><span>last resort: a text</span><em style="--h:4%"></em></div>
                     </div>
                 </article>
@@ -150,15 +150,15 @@
             <div class="grid">
                 <article class="cell reveal">
                     <div class="art art-poop"><span>💩</span><span>💩</span><span>💩</span><span>💩</span><span>💩</span></div>
-                    <p><b>Screen poop.</b> About half the time it gets bored, it poops. Up to 40. Click each one to clean it.</p>
+                    <p><b>Escalating screen poop.</b> One at a time when restless, 1–2 when anxious, 2–4 when feral, and 3–5 at empty. Up to 40; click each one to clean it.</p>
                 </article>
                 <article class="cell reveal" style="--d:60ms">
                     <div class="art art-note"><div class="mini-note">A goose is looking for you. He knows about the soup.</div></div>
-                    <p><b>Sticky notes.</b> About once a minute, an LLM writes you a note of pure nonsense.</p>
+                    <p><b>Sticky notes.</b> Once hunger drops below 85%, an LLM leaves a note of pure nonsense about once a minute.</p>
                 </article>
                 <article class="cell reveal" style="--d:120ms">
                     <div class="art art-win"><div class="mini-win"><i></i><i></i><i></i></div></div>
-                    <p><b>Window shove.</b> Slides your front window 60–160&nbsp;px. “scoot.”</p>
+                    <p><b>Window wobble.</b> Walks your focused window around a tiny 5×5-pixel square five times, then returns it exactly where it started. “scoot.”</p>
                 </article>
                 <article class="cell reveal">
                     <div class="art art-cursor"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 2l16 9-7 2-3 7z" fill="#1A1A18" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
@@ -174,7 +174,7 @@
                 </article>
                 <article class="cell reveal">
                     <div class="art art-yt"><div class="mini-yt"><div class="yt-screen"><i></i></div><span>mommy asmr ▸ comforting you</span></div></div>
-                    <p><b>Feral tabs.</b> Below 10% it opens a Mommy ASMR video and a Google Images tab of nonsense every 30 seconds.</p>
+                    <p><b>Feral tabs.</b> At 25% or below it opens a Mommy ASMR video and a Google Images tab of nonsense every 30 seconds.</p>
                 </article>
                 <article class="cell reveal" style="--d:60ms">
                     <div class="art art-ult"><div class="mini-ult"><em>pick one</em><span>A · shove your window</span><span>B · pick the music</span><i></i></div></div>
@@ -256,7 +256,7 @@ open build/Build/Products/Debug/ChaosTamagotchi.app</code></pre>
             <h2 class="h2 left narrow reveal">Frequently asked questions</h2>
             <div class="faq narrow">
                 <details class="reveal"><summary>Will it text my mom?</summary><p>Only if your mom is in <code>CHAOS_TEXT_ALLOWLIST</code>. It defaults to a single test contact, and texts are signed by the pet, never pretending to be you or a relative.</p></details>
-                <details class="reveal"><summary>How do I make it stop?</summary><p>Choose Restore Everything from the menu bar to undo everything it did, or turn on Safe Mode so it just roams and says cute things. Clicking Pickle feeds it 50%. Quit is in the same menu.</p></details>
+                <details class="reveal"><summary>How do I make it stop?</summary><p>Choose Restore Everything from the menu bar to undo everything it did, or turn on Safe Mode so it just roams and says cute things. Clicking Pickle feeds it 15%; above 85% its automatic calm tier is harmless too. Quit is in the same menu.</p></details>
                 <details class="reveal"><summary>What's an ultimatum?</summary><p>Before a severe crime, Pickle sometimes offers two and gives you eight seconds to pick one. Ignore it and it does both. Some are fake-outs: two outrageous threats, then "jk" and one giant poop.</p></details>
                 <details class="reveal"><summary>Does it need an API key?</summary><p>No. Without a Featherless key it uses canned notes and built-in texts. With one, the sticky notes and messages are written by an LLM.</p></details>
                 <details class="reveal"><summary>What permissions does it ask for?</summary><p>Accessibility for window shoving, and Automation for Finder, Contacts, Messages and Spotify. macOS prompts the first time each one is used.</p></details>

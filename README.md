@@ -38,9 +38,9 @@ The pet shows up at the bottom of the screen, and a paw icon with a health reado
 | `FEATHERLESS_API_KEY` | none | LLM for sticky-note roasts and texts. Without it, canned lines are used. |
 | `FEATHERLESS_MODEL` | `mistralai/Mistral-Nemo-Instruct-2407` | Any Featherless chat model. |
 | `CHAOS_TEXT_ALLOWLIST` | `Mateo Alado` | Comma-separated **Contacts names** the pet may text. Each crime picks one at random and texts the phone number stored in Contacts. **Change this to your own friend(s).** |
-| `CHAOS_STARVE_SECONDS` | `300` | How long an ignored pet takes to go from full to 0%. Lower is harsher. |
+| `CHAOS_STARVE_SECONDS` | `180` | How long an ignored pet takes to go from full to 0%. Lower is harsher. |
 | `CHAOS_TEXT_INTERVAL_SECONDS` | `300` | Minimum gap between texts while it's at 0%. |
-| `CHAOS_DEBUG_DEADLINE_SECONDS` | `300` | Speeds up or slows down how often mischief happens (e.g. `60` for testing). |
+| `CHAOS_DEBUG_DEADLINE_SECONDS` | `180` | Speeds up or slows down how often mischief happens (e.g. `60` for testing). |
 | `CHAOS_SIDECAR_PATH` | bundled copy | Run a different `chaos_action.py`, e.g. while editing it. |
 
 Real environment variables override the file.
@@ -64,17 +64,17 @@ CODE_SIGN_IDENTITY = <SHA-1 from `security find-identity -v -p codesigning`>
 
 ## How it behaves
 
-Hunger drains faster the emptier it gets (full to 0% in 5 minutes if ignored). Each click, or **Feed (+50%)**, adds 50%.
+Hunger drains faster the emptier it gets (full to 0% in 3 minutes if ignored). Each click, or **Feed (+15%)**, adds 15%.
 
 | Mood | Fullness (reached after, if ignored) | Behavior |
 |---|---|---|
-| content | > 75% (0–2.5 min) | strange idle chatter, occasional 💩 and cursor boops |
-| restless | 50–75% (~2.5 min) | window shoves, 3 s cursor hijack, Spotify plays a Ken Carson / OsamaSon / xaviersobased / Carti track for 5 s |
-| anxious | 10–50% (~3.7 min) | adds dragging a desktop folder's icon |
-| feral | 0–10% (~4.8 min) | every 30 s: a Mommy ASMR video and a Google Images tab of nonsense |
-| committingCrimes | 0% (5 min) | last resort: texts someone from `CHAOS_TEXT_ALLOWLIST`, at most every 5 minutes |
+| content | 85–100% (0–1.1 min) | automatic calm tier: roams and says cute things, with no side effects |
+| restless | 60–85% (~1.1 min) | starts dropping single poops, leaving nonsense notes, wobbling the focused window in a 5×5 px square, hijacking the cursor, and briefly taking over Spotify |
+| anxious | 25–60% (~2 min) | drops 1–2 poops at a time and adds dragging a desktop folder's icon |
+| feral | 0–25% (~2.7 min) | drops 2–4 poops at a time; every 30 s opens a Mommy ASMR video and a Google Images tab of nonsense |
+| committingCrimes | 0% (3 min) | drops 3–5 poops at a time and, as a last resort, texts someone from `CHAOS_TEXT_ALLOWLIST` at most every 5 minutes |
 
-- **Always:** a nonsense sticky note about once a minute, and a Mommy ASMR video every 2–4 minutes.
+- **Below 85%:** a nonsense sticky note about once a minute; Mommy ASMR can also join the chaos. Neither happens in the calm tier.
 - **Ultimatums:** before a severe crime it may make you pick one of two in 8 s (ignore it and it does both). Some are fake-outs that end in one giant 💩.
 - **Restore Everything** (⌘R): clears all poop and notes, closes the tabs it opened, and puts your windows, desktop icons and music back. Icons move but files never do, and the pet never types into other apps.
 - **Safe Mode:** the pet only roams and says cute things. No hunger, notes, tabs, music or texts.

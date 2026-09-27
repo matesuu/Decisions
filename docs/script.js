@@ -100,9 +100,9 @@
     if (mac) {
         var pet = $('#demo-pet'), petImg = $('#demo-pet img'), cursor = $('#demo-cursor'), poops = $('#demo-poops'), sayEl = $('#demo-say');
         var healthEl = $('#demo-health'), moodEl = $('#demo-mood'), chip = $('#demo-chip'), meter = $('#demo-meter');
-        var MOODS = [[75, 'content'], [50, 'restless'], [25, 'anxious'], [0.01, 'feral'], [-1, 'crimes']];
+        var MOODS = [[85, 'content'], [60, 'restless'], [25, 'anxious'], [0.01, 'feral'], [-1, 'crimes']];
         var DRAIN = 15;  // seconds from 100% to crimes
-        var timers = [], roamTimer = 0, tickTimer = 0, sayTimer = 0, start = 0, demoVisible = true;
+        var timers = [], roamTimer = 0, tickTimer = 0, sayTimer = 0, start = 0, feedBonus = 0, demoVisible = true;
 
         var later = function (s, fn) { timers.push(setTimeout(fn, s * 1000)); };
         var say = function (text, secs) {
@@ -138,7 +138,7 @@
         };
         var tick = function () {
             var t = (performance.now() - start) / 1000;
-            var h = Math.max(0, 100 - (t / DRAIN) * 100);
+            var h = Math.max(0, Math.min(100, 100 - (t / DRAIN) * 100 + feedBonus));
             var mood = 'crimes';
             for (var i = 0; i < MOODS.length; i++) { if (h > MOODS[i][0]) { mood = MOODS[i][1]; break; } }
             healthEl.textContent = Math.round(h);
@@ -171,38 +171,34 @@
         var run = function () {
             reset();
             start = performance.now();
+            feedBonus = 0;
             tick();
             tickTimer = setInterval(tick, 250);
             var w = mac.clientWidth, h = mac.clientHeight;
             setCursor(w * 0.62, h * 0.5);
             later(0.8, function () { say('hi :3'); });
-            later(2.2, function () { dropPoop(1); });
+            later(2.2, function () { say('safe mode is over.'); dropPoop(1); });
             later(3.4, function () { say('I have notes.'); });
             later(4.6, function () { mac.classList.add('noted'); });
             later(6.6, function () { say('scoot.'); });
-            later(7.8, function () { mac.classList.add('nudged'); });
+            later(7.8, function () { mac.classList.add('nudged'); dropPoop(2); });
             later(9.0, function () { say('gimme the mouse.'); });
             later(9.8, hijack);
             later(11.4, function () { say('ultimatum. pick one.', 2.4); mac.classList.add('ult'); });
             later(13.0, function () { mac.classList.add('picked'); });
             later(13.6, function () { mac.classList.remove('ult'); say('fine. DJ time.'); });
-            later(14.4, function () { mac.classList.add('spotify'); dropPoop(2); });
+            later(14.4, function () { mac.classList.add('spotify'); dropPoop(4); });
             later(15.4, function () { say("that's it. texting your friend.", 2.4); });
             later(16.4, function () { mac.classList.add('texting'); });
             later(17.8, function () { mac.classList.add('sent'); });
-            later(20, function () { feed(); });
+            later(20, function () { reset(); if (demoVisible) run(); });
         };
         var feed = function () {
-            reset();
-            mac.setAttribute('data-mood', 'content');
-            chip.textContent = 'fed ✓';
-            chip.classList.remove('hot');
-            healthEl.textContent = '100';
-            moodEl.textContent = 'content';
-            meter.style.transform = 'scaleX(1)';
+            feedBonus = Math.min(100, feedBonus + 15);
+            tick();
             petImg.src = 'assets/mona-happy.gif';
-            say('nom. forgiven.');
-            timers.push(setTimeout(function () { if (demoVisible) run(); }, 1600));
+            say('+15%. snack acquired.');
+            timers.push(setTimeout(function () { if (demoVisible) tick(); }, 900));
         };
         $('#demo-feed').addEventListener('click', feed);
 

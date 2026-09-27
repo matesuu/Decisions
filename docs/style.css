@@ -161,7 +161,14 @@ img[src$=".gif"] { image-rendering: pixelated; }
 .mac-code span { height: 7px; width: var(--w); border-radius: 1px; background: #C9CDD4; }
 .mac-code span:nth-child(3n) { background: #F2B8B3; }
 .mac-code span:nth-child(odd) { margin-left: 14px; }
-.mac.nudged .mac-window { transform: translate(18%, 14%) rotate(-1.5deg); }
+.mac.nudged .mac-window { animation: windowSquare .72s steps(1, end) 5; }
+@keyframes windowSquare {
+    0%, 100% { transform: none; }
+    20% { transform: translateX(5px); }
+    40% { transform: translate(5px, 5px); }
+    60% { transform: translateY(5px); }
+    80% { transform: none; }
+}
 .mac-folder { position: absolute; right: 7%; top: 14%; display: grid; justify-items: center; gap: 2px; font-size: clamp(22px, 3vw, 32px); transition: transform 1.4s var(--ease); }
 .mac-folder small { font: 500 10px var(--pixel); color: #fff; background: var(--ink); padding: 0 4px; }
 .mac.dragged .mac-folder { transform: translate(-240%, 180%) rotate(-8deg); }

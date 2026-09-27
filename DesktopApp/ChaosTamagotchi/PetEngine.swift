@@ -7,8 +7,8 @@ import CoreGraphics
 /// GUI apps get a minimal PATH; add the usual places python3 (with deps) lives.
 let sidecarExtraPath = "/opt/homebrew/bin:/usr/local/bin:/opt/anaconda3/bin"
 
-/// Default deadline: 5 minutes. Mischief cadence below is tuned for 30 min and scaled down proportionally.
-let defaultDeadlineSeconds: TimeInterval = 300
+/// Default hunger cycle: 3 minutes from completely full to empty.
+let defaultDeadlineSeconds: TimeInterval = 180
 
 /// Secrets live outside the repo: KEY=VALUE lines in ~/.chaos_tamagotchi.env (real env vars win).
 let appEnvironment: [String: String] = {
@@ -47,7 +47,7 @@ enum Mood: String {
     /// Seconds between mischief events; nil = none.
     var mischiefInterval: TimeInterval? {
         switch self {
-        case .content: return 25
+        case .content: return nil
         case .restless: return 60
         case .anxious: return 45
         case .feral: return 30
@@ -57,9 +57,9 @@ enum Mood: String {
 
     static func from(fraction f: Double) -> Mood {
         switch f {
-        case ..<0.25: return .content
-        case ..<0.5: return .restless
-        case ..<0.9: return .anxious
+        case ..<0.15: return .content
+        case ..<0.40: return .restless
+        case ..<0.75: return .anxious
         case ..<1.0: return .feral
         default: return .committingCrimes
         }
@@ -92,7 +92,7 @@ final class PetEngine: ObservableObject {
     /// Debug-only override: set CHAOS_DEBUG_DEADLINE_SECONDS (e.g. 30) in the Xcode scheme
     /// to fast-forward through all moods. Never set in normal use.
     let deadlineSeconds: TimeInterval
-    /// Fullness, 0...100. Drains every second, faster the emptier it gets; each click adds 50.
+    /// Fullness, 0...100. Drains every second, faster the emptier it gets; each click adds 15.
     private var fullness: Double = 100
     private var lastText = Date.distantPast
     private var textInFlight = false
@@ -170,8 +170,8 @@ final class PetEngine: ObservableObject {
     var health: Double { max(0, min(1, fullness / 100)) }
 
     // Hunger drains at a + b·(100 − fullness) %/s: at empty it's `starveSpeedup`× faster than at full,
-    // and an ignored pet goes from 100 to 0 in exactly `starveSeconds` (CHAOS_STARVE_SECONDS, default 300).
-    private let starveSeconds: TimeInterval = appEnvironment["CHAOS_STARVE_SECONDS"].flatMap(Double.init) ?? 300
+    // and an ignored pet goes from 100 to 0 in exactly `starveSeconds` (CHAOS_STARVE_SECONDS, default 180).
+    private let starveSeconds: TimeInterval = appEnvironment["CHAOS_STARVE_SECONDS"].flatMap(Double.init) ?? 180
     private let starveSpeedup = 10.0
     private var drainB: Double { log(starveSpeedup) / starveSeconds }
     private var drainA: Double { 100 * drainB / (starveSpeedup - 1) }
@@ -185,7 +185,7 @@ final class PetEngine: ObservableObject {
 
     /// Seconds until the next mood tier, and its name (nil once committingCrimes).
     var nextTier: (name: String, seconds: TimeInterval)? {
-        for (threshold, name) in [(75.0, "restless"), (50.0, "anxious"), (10.0, "feral"), (0.0, "crimes")] where fullness > threshold {
+        for (threshold, name) in [(85.0, "chaos"), (60.0, "anxious"), (25.0, "feral"), (0.0, "crimes")] where fullness > threshold {
             return (name, secondsToDrain(from: fullness, to: threshold))
         }
         return nil
@@ -193,13 +193,13 @@ final class PetEngine: ObservableObject {
 
     // MARK: Check-in
 
-    /// One click = one meal: +50% fullness. It never resets the pet; you have to out-click the drain.
+    /// One click = one snack: +15% fullness. It never resets the pet; you have to keep feeding it.
     func checkIn() {
-        fullness = min(100, fullness + 50)
+        fullness = min(100, fullness + 15)
         updateHunger()
         showFace(.happy, seconds: 0.8)
         if speechText == nil {
-            say(["nom.", "+50%. acceptable.", "more.", "that's it?", "meal acquired.", "keep going."].randomElement()!, seconds: 1.5)
+            say(["nom.", "+15%. acceptable.", "more.", "that's it?", "snack acquired.", "keep going."].randomElement()!, seconds: 1.5)
         }
     }
 
@@ -232,7 +232,7 @@ final class PetEngine: ObservableObject {
         // Scale mischief cadence down when the deadline is shortened for debugging.
         let scale = min(1, deadlineSeconds / 1800)
         sinceMischief += 1
-        let due = mood == .content ? 25 : max(3, (mood.mischiefInterval ?? 0) * scale)  // baseline 25s is never scaled
+        let due = max(3, (mood.mischiefInterval ?? 0) * scale)
         if mood.mischiefInterval != nil, sinceMischief >= due {
             sinceMischief = 0
             mischief()
@@ -240,22 +240,30 @@ final class PetEngine: ObservableObject {
 
         chatter()
 
-        // A nonsense sticky note about once a minute.
-        sinceNote += 1
-        if sinceNote >= 60 {
+        // Chaos starts below 85%: leave a nonsense sticky note about once a minute.
+        if mood != .content {
+            sinceNote += 1
+            if sinceNote >= 60 {
+                sinceNote = 0
+                mischiefKit.stickyNoteRoast()
+            }
+        } else {
             sinceNote = 0
-            mischiefKit.stickyNoteRoast()
         }
 
-        // Every 2–4 minutes, a Mommy ASMR video. Always. No matter what.
-        sinceASMR += 1
-        if sinceASMR >= nextASMR {
+        // Mommy ASMR is chaos too, never calm-tier behavior.
+        if mood != .content {
+            sinceASMR += 1
+            if sinceASMR >= nextASMR {
+                sinceASMR = 0
+                nextASMR = .random(in: 120...240)
+                mischiefKit.openMommyASMR()
+            }
+        } else {
             sinceASMR = 0
-            nextASMR = .random(in: 120...240)
-            mischiefKit.openMommyASMR()
         }
 
-        // Feral (10% and below): every 30 seconds, new tabs.
+        // Feral (25% and below): every 30 seconds, new tabs.
         if mood == .feral || mood == .committingCrimes {
             sinceBarrage += 1
             if sinceBarrage >= 30 {
@@ -333,9 +341,16 @@ final class PetEngine: ObservableObject {
 
     private func mischief() {
         let kit = mischiefKit
-        // Poop only half the time, and fewer at once.
-        if Bool.random() {
-            kit.dropPoop(count: mood == .feral || mood == .committingCrimes ? 2 : 1)
+        // Poop ramps sharply with hunger: both the chance and pile size increase by tier.
+        let poop: (chance: Int, count: ClosedRange<Int>) = switch mood {
+        case .content: (0, 0...0)
+        case .restless: (55, 1...1)
+        case .anxious: (75, 1...2)
+        case .feral: (100, 2...4)
+        case .committingCrimes: (100, 3...5)
+        }
+        if Int.random(in: 1...100) <= poop.chance {
+            kit.dropPoop(count: Int.random(in: poop.count))
         }
         // Mild crimes are the bread and butter; the severe ones unlock as it gets hungrier.
         var pool: [Crime] = [
@@ -457,7 +472,7 @@ final class PetEngine: ObservableObject {
             case .anxious: ["my lawyer is a pigeon.", "the fridge is plotting.", "HELLO??", "I can hear the pixels."]
             case .feral, .committingCrimes: ["hehehe", "no rules.", "the geese have spoken.", "you did this.", "*gremlin noises*"]
             }
-        let lines = Self.isSafeMode
+        let lines = Self.isSafeMode || mood == .content
             ? ["hi :3", "you're doing great!", "prrr", "I like it here.", "nice screen!", "you're my favorite human.",
                "*happy wiggle*", "drink some water! 💧", "proud of you.", "*purrs quietly*"]
             : chaos
