@@ -111,7 +111,9 @@ def chat(messages):
         json={"model": os.environ.get("FEATHERLESS_MODEL", DEFAULT_MODEL),
               "messages": messages, "temperature": 0.8, "max_tokens": 900,
               "response_format": {"type": "json_object"}},
-        timeout=60,
+        # The pet must attempt its last-resort text within 15 seconds of hitting 0%.
+        # Give the optional joke generation only three seconds; the built-in lines are instant.
+        timeout=3,
     )
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
@@ -197,11 +199,11 @@ def get_options(situation):
             seeds=" and ".join(random.sample(NONSENSE_SEEDS, 2)),
             type_notes="\n".join(TYPE_NOTES[t] for t in ALLOWED_TYPES))},
     ]
-    for attempt in range(3):
+    for attempt in range(1):
         try:
             return validate(extract_json(chat(messages)))
         except Exception as e:  # bad JSON, schema, or network: retry
-            log(f"[attempt {attempt + 1}/3] option generation failed: {e}")
+            log(f"[attempt {attempt + 1}/1] option generation failed: {e}")
             if "FEATHERLESS_API_KEY" in str(e):
                 break
     log("Falling back to built-in options.")
@@ -220,7 +222,7 @@ def as_escape(s):
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def osa(script, timeout=60):
+def osa(script, timeout=4):
     r = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=timeout)
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or "osascript failed")
@@ -233,9 +235,8 @@ def pick_recipient():
 
 def resolve_contact(name):
     """(full name, number) from Contacts: prefers a mobile/iPhone number, then any phone, then email."""
-    subprocess.run(["open", "-gj", "-a", "Contacts"], capture_output=True)  # launch hidden if needed
     out = osa('''
-delay 1
+delay 0.25
 tell application "Contacts"
   set ps to (every person whose name is "%s")
   if (count of ps) is 0 then set ps to (every person whose name contains "%s")
@@ -275,9 +276,9 @@ def send_imessage(opt, armed):
     try:
         osa('''
 tell application "Messages" to activate
-delay 1
+delay 0.25
 open location "imessage://%s"
-delay 2.5
+delay 0.75
 tell application "Messages"
   set svc to 1st account whose service type = iMessage
   try

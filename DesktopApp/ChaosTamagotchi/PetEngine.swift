@@ -274,7 +274,9 @@ final class PetEngine: ObservableObject {
             sinceBarrage = 0
         }
 
-        // Last resort: only at 0%, and at most every CHAOS_TEXT_INTERVAL_SECONDS (default 300), it texts your friend.
+        // Last resort: start the sidecar immediately on the first 0% tick. The sidecar caps optional
+        // AI generation and AppleScript waits so the send attempt begins within 15 seconds.
+        // Further texts remain limited by CHAOS_TEXT_INTERVAL_SECONDS (default 300).
         if mood == .committingCrimes && !textInFlight && Date().timeIntervalSince(lastText) >= textInterval {
             lastText = Date()
             commitCrime()

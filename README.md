@@ -72,7 +72,7 @@ Hunger drains faster the emptier it gets (full to 0% in 3 minutes if ignored). E
 | restless | 60–85% (~1.1 min) | starts dropping single poops, leaving nonsense notes, wobbling the focused window in a 5×5 px square, hijacking the cursor, and briefly taking over Spotify |
 | anxious | 25–60% (~2 min) | drops 1–2 poops at a time and adds dragging a desktop folder's icon |
 | feral | 0–25% (~2.7 min) | drops 2–4 poops at a time; every 30 s opens a Mommy ASMR video and a Google Images tab of nonsense |
-| committingCrimes | 0% (3 min) | drops 3–5 poops at a time and, as a last resort, texts someone from `CHAOS_TEXT_ALLOWLIST` at most every 5 minutes |
+| committingCrimes | 0% (3 min) | drops 3–5 poops at a time and immediately starts a last-resort text to someone from `CHAOS_TEXT_ALLOWLIST`; the send is attempted within 15 seconds and repeats at most every 5 minutes |
 
 - **Below 85%:** a nonsense sticky note about once a minute; Mommy ASMR can also join the chaos. Neither happens in the calm tier.
 - **Ultimatums:** before a severe crime it may make you pick one of two in 8 s (ignore it and it does both). Some are fake-outs that end in one giant 💩.
